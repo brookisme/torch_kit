@@ -25,7 +25,7 @@ class SqueezeExcitation(nn.Module):
 
 
 
-class ConvBlock(nn.Module):
+class Conv(nn.Module):
 
     def __init__(self,
             in_ch,
@@ -39,7 +39,7 @@ class ConvBlock(nn.Module):
             se=True,
             act='relu',
             act_kwargs={}):
-        super(ConvBlock, self).__init__()
+        super(Conv, self).__init__()
         self.out_ch=out_ch or 2*in_ch
         self._set_post_processes(self.out_ch,bn,se,act,act_kwargs)
         self._set_conv_layers(
@@ -102,7 +102,7 @@ class ConvBlock(nn.Module):
     
 
 
-class DownBlock(nn.Module):
+class Down(nn.Module):
     
     def __init__(self,
             in_ch,
@@ -114,11 +114,11 @@ class DownBlock(nn.Module):
             se=True,
             act='relu',
             act_kwargs={}):
-        super(DownBlock, self).__init__()
+        super(Down, self).__init__()
         self.out_size=(in_size//2)-depth*(1-padding)*2
         self.out_ch=out_ch or in_ch*2
         self.down=nn.MaxPool2d(kernel_size=2)
-        self.conv_block=ConvBlock(
+        self.conv_block=Conv(
             in_ch=in_ch,
             out_ch=self.out_ch,
             in_size=in_size//2,
@@ -136,7 +136,7 @@ class DownBlock(nn.Module):
 
 
 
-class UpBlock(nn.Module):
+class Up(nn.Module):
     
     @staticmethod
     def cropping(skip_size,size):
@@ -155,7 +155,7 @@ class UpBlock(nn.Module):
             se=True,
             act='relu',
             act_kwargs={}):
-        super(UpBlock, self).__init__()
+        super(Up, self).__init__()
         self.crop=crop
         self.padding=padding
         self.out_size=(in_size*2)-depth*(1-padding)*2
@@ -164,7 +164,7 @@ class UpBlock(nn.Module):
             self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         else:
             self.up = nn.ConvTranspose2d(in_ch, in_ch//2, 2, stride=2)
-        self.conv_block=ConvBlock(
+        self.conv_block=Conv(
             in_ch,
             self.out_size,
             out_ch=self.out_ch,

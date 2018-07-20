@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from models.unet.blocks import *
+import models.unet.blocks as blocks
 
 
 class UNet(nn.Module):
@@ -23,7 +23,7 @@ class UNet(nn.Module):
         self.conv_depth=conv_depth
         self.out_ch=out_ch
         self.padding=padding
-        self.input_conv=ConvBlock(
+        self.input_conv=blocks.Conv(
             in_ch=in_ch,
             in_size=in_size,
             out_ch=init_ch,
@@ -69,7 +69,7 @@ class UNet(nn.Module):
     def _down_layers(self,in_ch,in_size,bn,se,act,act_kwargs):
         layers=[]
         for index in range(1,self.network_depth+1):
-            layer=DownBlock(
+            layer=blocks.Down(
                 in_ch,
                 in_size,
                 depth=self.conv_depth,
@@ -92,8 +92,8 @@ class UNet(nn.Module):
         in_size=first.out_size
         layers=[]
         for down_layer in down_layers:
-            crop=UpBlock.cropping(down_layer.out_size,2*in_size)
-            layer=UpBlock(
+            crop=blocks.Up.cropping(down_layer.out_size,2*in_size)
+            layer=blocks.Up(
                 in_ch,
                 in_size,
                 depth=self.conv_depth,
