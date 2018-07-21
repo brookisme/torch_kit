@@ -1,109 +1,33 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import models.shared.blocks as blocks
 
-
-
-class SqueezeExcitation(nn.Module):
-    def __init__(self, nb_channels, reduction=16):
-        super(SqueezeExcitation, self).__init__()
-        self.nb_channels=nb_channels
-        self.avg_pool=nn.AdaptiveAvgPool2d(1)
-        self.fc=nn.Sequential(
-                nn.Linear(nb_channels, nb_channels // reduction),
-                nn.ReLU(inplace=True),
-                nn.Linear(nb_channels // reduction, nb_channels),
-                nn.Sigmoid())
-
-        
-    def forward(self, x):
-        y = self.avg_pool(x).view(-1,self.nb_channels)
-        y = self.fc(y).view(-1,self.nb_channels,1,1)
-        return x * y
-    
-
-
-
-
-class Conv(nn.Module):
-
-    def __init__(self,
-            in_ch,
-            in_size,
-            depth=2, 
-            kernel_size=3, 
-            stride=1, 
-            padding=0, 
-            out_ch=None,
-            bn=True,
-            se=True,
-            act='relu',
-            act_kwargs={}):
-        super(Conv, self).__init__()
-        self.out_ch=out_ch or 2*in_ch
-        self._set_post_processes(self.out_ch,bn,se,act,act_kwargs)
-        self._set_conv_layers(
-            depth,
-            in_ch,
-            kernel_size,
-            stride,
-            padding)
-        self.out_size=in_size-depth*2*((kernel_size-1)/2-padding)
-
-        
-    def forward(self, x):
-        x=self.conv_layers(x)
-        if self.bn:
-            x=self.bn(x)
-        if self.act:
-            x=self._activation(x)
-        if self.se:
-            x=self.se(x)
-        return x
-
-    
-    def _set_post_processes(self,out_channels,bn,se,act,act_kwargs):
-        if bn:
-            self.bn=nn.BatchNorm2d(out_channels)
-        else:
-            self.bn=False
-        if se:
-            self.se=SqueezeExcitation(out_channels)
-        else:
-            self.se=False
-        self.act=act
-        self.act_kwargs=act_kwargs
-
-        
-    def _set_conv_layers(
-            self,
-            depth,
-            in_ch,
-            kernel_size,
-            stride,
-            padding):
-        layers=[]
-        for index in range(depth):
-            if index!=0:
-                in_ch=self.out_ch
-            layers.append(
-                nn.Conv2d(
-                    in_channels=in_ch,
-                    out_channels=self.out_ch,
-                    kernel_size=kernel_size,
-                    stride=stride,
-                    padding=padding))
-        self.conv_layers=nn.Sequential(*layers)
-
-        
-    def _activation(self,x):
-        return getattr(F,self.act,**self.act_kwargs)(x)
-
-    
 
 
 class Down(nn.Module):
-    
+    r""" UNet Down Block
+
+    Layers:
+        1. MaxPooling
+        2. Conv Block 
+
+    Args:
+        in_ch (int): Number of channels in input
+        in_size (int): Size (=H=W) of input
+        out_ch (int <None>): Number of channels in output (if None => in_ch)
+        depth (int <2>): The number of convolutional layers 
+        padding (int <0>): Padding. Use 0 or 1 since the kernal size is fixed at 3x3
+        bn (bool <True>): Add batch norm layer after Conv Block
+        se (bool <True>): Add Squeeze and Excitation Block after Conv Block
+        act (str <'relu'>): Method name of activation function after Conv Block
+        act_kwargs (dict <{}>): Kwargs for activation function after Conv Block
+        
+    Properties:
+        out_ch <int>: Number of channels of the output
+        out_size <int>: Size (=H=W) of input
+
+    """    
     def __init__(self,
             in_ch,
             in_size,
@@ -118,7 +42,7 @@ class Down(nn.Module):
         self.out_size=(in_size//2)-depth*(1-padding)*2
         self.out_ch=out_ch or in_ch*2
         self.down=nn.MaxPool2d(kernel_size=2)
-        self.conv_block=Conv(
+        self.conv_block=blocks.Conv(
             in_ch=in_ch,
             out_ch=self.out_ch,
             in_size=in_size//2,
@@ -136,20 +60,55 @@ class Down(nn.Module):
 
 
 
+
 class Up(nn.Module):
-    
+    r""" UNet Up Block
+
+    Layers:
+        1. ConvTranspose2d or bilinear Upsample
+        2. Concat with (possibly cropped) Skip connection
+        3. Conv Block 
+
+    Args:
+        in_ch (int): Number of channels in input
+        in_size (int): Size (=H=W) of input
+        out_ch (int <None>): Number of channels in output (if None => in_ch)
+        depth (int <2>): The number of convolutional layers 
+        bilinear (bool <False>): If true use bilinear Upsample otherwise ConvTranspose2d
+        crop (int <int or None>): 
+            If padding is 0: cropping for skip connection.  If None the cropping will be
+            calculated.  Note: both input-size minus skip-size must be even. 
+        padding (int <0>): Padding. Use 0 or 1 since the kernal size is fixed at 3x3
+        bn (bool <True>): Add batch norm layer after Conv Block
+        se (bool <True>): Add Squeeze and Excitation Block after Conv Block
+        act (str <'relu'>): Method name of activation function after Conv Block
+        act_kwargs (dict <{}>): Kwargs for activation function after Conv Block
+        
+    Properties:
+        out_ch <int>: Number of channels of the output
+        out_size <int>: Size (=H=W) of input
+        cropping <int>: Cropping for skip connection
+        padding <int>: Padding for conv block
+
+    """      
     @staticmethod
     def cropping(skip_size,size):
+        r""" calculates crop size
+
+        Args:
+            skip_size (int): size (=h=w) of skip connection
+            size (int): size (=h=w) of input
+        """
         return (skip_size-size)//2
     
-    
+ 
     def __init__(self,
             in_ch,
             in_size,
             out_ch=None,
+            depth=2,
             bilinear=False,
             crop=None,
-            depth=2,
             padding=0,
             bn=True,
             se=True,
@@ -164,7 +123,7 @@ class Up(nn.Module):
             self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         else:
             self.up = nn.ConvTranspose2d(in_ch, in_ch//2, 2, stride=2)
-        self.conv_block=Conv(
+        self.conv_block=blocks.Conv(
             in_ch,
             self.out_size,
             out_ch=self.out_ch,

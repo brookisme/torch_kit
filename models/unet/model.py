@@ -1,11 +1,39 @@
-import torch
 import torch.nn as nn
-import torch.nn.functional as F
+from models.shared.blocks import Conv
 import models.unet.blocks as blocks
 
 
 class UNet(nn.Module):
+    r""" UNet
 
+    The standard UNet with optional addition of Squeeze and Excitation Blocks, 
+    configurable network depth and depth of conv-blocks.  Allows for both valid
+    and same padding.
+
+    Note: currently designed for square (H=W) inputs only 
+
+    Args:
+        network_depth (int <2>): Depth of Network 'U'
+        conv_depth (int <2>): The number of convolutional layers 
+        in_ch (int): Number of channels in input
+        in_size (int): Size (=H=W) of input
+        out_ch (int <None>): Number of channels in output (if None => in_ch)
+        init_ch (int <None>): Number of channels added in first convolution
+        padding (int <0>): Padding
+        bn (bool <True>): Add batch norm layer
+        se (bool <True>): Add Squeeze and Excitation Block
+        act (str <'relu'>): Method name of activation function
+        act_kwargs (dict <{}>): Kwargs for activation function
+        
+    Properties:
+        out_ch <int>: Number of channels of the output
+        out_size <int>: Size (=H=W) of input
+        padding <int>: Padding for conv block
+
+    Links:
+        https://arxiv.org/abs/1505.04597
+
+    """
     def __init__(self,
             network_depth=4,
             conv_depth=2,
@@ -23,7 +51,7 @@ class UNet(nn.Module):
         self.conv_depth=conv_depth
         self.out_ch=out_ch
         self.padding=padding
-        self.input_conv=blocks.Conv(
+        self.input_conv=Conv(
             in_ch=in_ch,
             in_size=in_size,
             out_ch=init_ch,
@@ -66,6 +94,9 @@ class UNet(nn.Module):
         return x
     
     
+    #
+    # Internal Methods
+    #
     def _down_layers(self,in_ch,in_size,bn,se,act,act_kwargs):
         layers=[]
         for index in range(1,self.network_depth+1):
