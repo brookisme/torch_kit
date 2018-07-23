@@ -12,6 +12,7 @@ man
 # Codebase
 playground.py
 playground.sh
+playground/
 
 # SUBLIME
 *sftp-config.json*
