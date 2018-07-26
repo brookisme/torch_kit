@@ -43,8 +43,9 @@ def fit(
         https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html?highlight=dataloader#train-the-network
     """
     steps=len(dataloader)
-    print_freq=max(steps//MAX_DOTS,1)
+    print_freq=max(steps*noise_reducer//MAX_DOTS,1)
     print_line()
+    nb_dots=1
     for epoch in range(nb_epochs):  # loop over the dataset multiple times
         epoch_loss=0.0
         print_epoch=(not (noise_reducer and (epoch%noise_reducer)))
@@ -63,16 +64,17 @@ def fit(
             epoch_loss+=batch_loss
             batch_loss_str=FLOAT_TMPL.format(batch_loss)
             loss_str=FLOAT_TMPL.format(epoch_loss)
+            nb_dots+=index//print_freq
             out_str=BATCH_OUT_TMPL.format(
                 epoch+1,
                 index+1,
                 steps,
                 loss_str,
                 batch_loss_str,
-                DOT*(1+(index//print_freq)))
-            if print_epoch:
-                print(out_str,end="\r",flush=True)
+                DOT*nb_dots)
+            print(out_str,end="\r",flush=True)
         if print_epoch:
+            nb_dots=1
             out_str=EPOCH_OUT_TMPL.format(
                 epoch+1,
                 index+1,
