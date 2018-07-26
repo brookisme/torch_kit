@@ -99,7 +99,7 @@ class Up(nn.Module):
             skip_size (int): size (=h=w) of skip connection
             size (int): size (=h=w) of input
         """
-        return (skip_size-size)//2
+        return int((skip_size-size)/2)
     
  
     def __init__(self,
