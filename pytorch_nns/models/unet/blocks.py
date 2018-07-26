@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import models.shared.blocks as blocks
+import pytorch_nns.models.shared.blocks as blocks
 
 
 

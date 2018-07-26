@@ -1,6 +1,6 @@
 import torch.nn as nn
-from models.shared.blocks import Conv
-import models.unet.blocks as blocks
+from pytorch_nns.models.shared.blocks import Conv
+import pytorch_nns.models.unet.blocks as blocks
 
 
 class UNet(nn.Module):
