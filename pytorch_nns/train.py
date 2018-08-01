@@ -84,6 +84,7 @@ def fit(
         if print_epoch:
             nb_dots=1
             print_batch_end(epoch,index,steps,loss_str)
-    print_batch_end(epoch,index,steps,loss_str)
+    if not print_epoch:
+        print_batch_end(epoch,index,steps,loss_str)
     print_line()
     print('COMPLETE: loss={:.5f}'.format(epoch_loss))
