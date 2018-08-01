@@ -22,6 +22,14 @@ def print_line(char='-',length=75):
     print(char*length)
 
 
+def print_batch_end(epoch,index,steps,loss_str):
+    out_str=EPOCH_OUT_TMPL.format(
+        epoch+1,
+        index+1,
+        steps,
+        loss_str,
+        DOT*MAX_DOTS)
+    print(out_str,flush=True)
 
 #
 # METHODS 
@@ -75,12 +83,7 @@ def fit(
             print(out_str,end="\r",flush=True)
         if print_epoch:
             nb_dots=1
-            out_str=EPOCH_OUT_TMPL.format(
-                epoch+1,
-                index+1,
-                steps,
-                loss_str,
-                DOT*MAX_DOTS)
-            print(out_str,flush=True)
+            print_batch_end(epoch,index,steps,loss_str)
+    print_batch_end(epoch,index,steps,loss_str)
     print_line()
     print('COMPLETE: loss={:.5f}'.format(epoch_loss))
