@@ -1,11 +1,11 @@
 import torch.cuda
 import torch.optim as optim
 import torch.nn as nn
-import torch.nn.functional as F
+import pytorch_nns.helpers as h
 #
 # CONFIG
 #
-MAX_DOTS=50
+MAX_DOTS=25
 DOT='.'
 FLOAT_TMPL='{:>.5f}'
 BATCH_OUT_TMPL="[epoch: {}, step: {}/{}] loss={} ({}) {}"
@@ -14,14 +14,9 @@ INPT_KEY='input'
 TARG_KEY='target'
 
 
-
 #
 # HELPERS
 #
-def print_line(char='-',length=75):
-    print(char*length)
-
-
 def print_batch_end(epoch,index,steps,loss_str):
     out_str=EPOCH_OUT_TMPL.format(
         epoch+1,
@@ -31,6 +26,8 @@ def print_batch_end(epoch,index,steps,loss_str):
         DOT*MAX_DOTS)
     print(out_str,flush=True)
 
+
+
 #
 # METHODS 
 #
@@ -39,6 +36,7 @@ def fit(
         dataloader,
         criterion,
         optimizer,
+        device=None,
         nb_epochs=1,
         noise_reducer=None,
         inputs_key=INPT_KEY,
@@ -52,7 +50,7 @@ def fit(
     """
     steps=len(dataloader)
     print_freq=max(steps*noise_reducer//MAX_DOTS,1)
-    print_line()
+    h.print_line()
     nb_dots=1
     for epoch in range(nb_epochs):  # loop over the dataset multiple times
         epoch_loss=0.0
@@ -60,6 +58,9 @@ def fit(
         for index, batch in enumerate(dataloader):
             inputs=batch[inputs_key].float()
             targets=batch[targets_key].float()
+            if device:
+                inputs=inputs.to(device)
+                targets=targets.to(device) 
             optimizer.zero_grad()
             outputs=model(inputs)
             if output_processor:
@@ -86,5 +87,5 @@ def fit(
             print_batch_end(epoch,index,steps,loss_str)
     if not print_epoch:
         print_batch_end(epoch,index,steps,loss_str)
-    print_line()
+    h.print_line()
     print('COMPLETE: loss={:.5f}'.format(epoch_loss))

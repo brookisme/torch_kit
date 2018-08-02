@@ -39,12 +39,12 @@ def dice(inpt,targ,weights=None):
     Returns:
         * mean reduction of (weighted) dice
     """    
-    if weights:
+    if weights is not None:
         weights=h.to_tensor(weights).float()
     targ=targ.float()
     inpt=(inpt>EPS).float()
-    inpt=Variable(inpt, requires_grad=True)
-    if weights:
+    inpt.requires_grad=True
+    if weights is not None:
         inpt=(weights*inpt.transpose(1,-1)).transpose(1,-1)
-    dice_coefs=2.0*(inpt*targ).sum(1,False)/(inpt+targ).sum(1,False)
+    dice_coefs=2.0*(inpt*targ).sum(1,False)/(inpt+targ+EPS).sum(1,False)
     return dice_coefs.mean()
