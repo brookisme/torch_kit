@@ -1,5 +1,6 @@
 import torch.nn as nn
-import pytorch_nns.functional as F
+import pytorch_nns.helpers as h
+import pytorch_nns.functional as f
 
 
 
@@ -11,13 +12,14 @@ class WeightedCategoricalCrossentropy(nn.Module):
         Args:
             * weights<tensor|nparray|list>: category weights
     """
-    def __init__(self, weights):
+    def __init__(self, weights, force_cpu=False):
         super(WeightedCategoricalCrossentropy, self).__init__()
-        self.weights=F.to_tensor(weights)
-
+        self.weights=h.to_tensor(weights)
+        print('FCPU',h.get_device(force_cpu))
+        self.weights.to(h.get_device(force_cpu))
         
     def forward(self, inpt, targ):
-        return F.weighted_categorical_crossentropy(inpt,targ,self.weights)
+        return f.weighted_categorical_crossentropy(inpt,targ,self.weights)
 
 
 
@@ -29,13 +31,14 @@ class Dice(nn.Module):
         Args:
             * weights<tensor|nparray|list|None>: optional category weights
     """
-    def __init__(self, weights):
+    def __init__(self, weights, force_cpu=False):
         super(Dice, self).__init__()
-        self.weights=F.to_tensor(weights)
+        self.weights=h.to_tensor(weights)
+        self.weights.to(h.get_device(force_cpu))
 
         
     def forward(self, inpt, targ):
-        return F.dice(inpt,targ,self.weights)
+        return f.dice(inpt,targ,self.weights)
 
 
 

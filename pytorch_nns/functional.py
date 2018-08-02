@@ -1,19 +1,10 @@
 import torch
+import pytorch_nns.helpers as h
+import numpy as np
 #
 # CONFIG
 #
 EPS=1e-11
-
-
-#
-# HELPERS
-#
-def to_tensor(v):
-    if isinstance(v,list):
-        v=torch.tensor(v)
-    elif isinstance(np.ndarray):
-        v=torch.from_numpy(v)
-    return v
 
 
 #
@@ -29,7 +20,7 @@ def weighted_categorical_crossentropy(inpt,targ,weights):
     Returns:
         * mean reduction of weighted categorical crossentropy
     """
-    weights=to_tensor(weights).float()
+    weights=h.to_tensor(weights).float()
     inpt=inpt/(inpt.sum(1,True)+EPS)
     inpt=torch.clamp(inpt, EPS, 1. - EPS)
     losses=((targ * torch.log(inpt))).float()
@@ -49,7 +40,7 @@ def dice(inpt,targ,weights=None):
         * mean reduction of (weighted) dice
     """    
     if weights:
-        weights=to_tensor(weights).float()
+        weights=h.to_tensor(weights).float()
     targ=targ.float()
     inpt=(inpt>EPS).float()
     inpt=Variable(inpt, requires_grad=True)
