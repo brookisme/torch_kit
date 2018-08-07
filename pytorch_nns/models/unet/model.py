@@ -1,5 +1,6 @@
 import torch.nn as nn
-from pytorch_nns.models.shared.blocks import Conv
+import torch.nn.functional as F
+from pytorch_nns.models.shared.blocks import Conv as ConvBlock
 import pytorch_nns.models.unet.blocks as blocks
 
 
@@ -42,39 +43,28 @@ class UNet(nn.Module):
             out_ch=2,
             init_ch=64,
             padding=0,
-            bn=True,
-            se=True,
-            act='relu',
-            act_kwargs={}):
+            bn=False,
+            se=True):
         super(UNet, self).__init__()
         self.network_depth=network_depth
         self.conv_depth=conv_depth
         self.out_ch=out_ch
         self.padding=padding
-        self.input_conv=Conv(
+        self.input_conv=ConvBlock(
             in_ch=in_ch,
             in_size=in_size,
             out_ch=init_ch,
             depth=self.conv_depth,
             padding=padding,
-            bn=bn,
-            se=se,
-            act=act,
-            act_kwargs=act_kwargs)
+            bn=False,
+            se=False)
         down_layers=self._down_layers(
             self.input_conv.out_ch,
             self.input_conv.out_size,
             bn=bn,
-            se=se,
-            act=act,
-            act_kwargs=act_kwargs)
+            se=se)
         self.down_blocks=nn.ModuleList(down_layers)
-        up_layers=self._up_layers(
-            down_layers,
-            bn=bn,
-            se=se,
-            act=act,
-            act_kwargs=act_kwargs)
+        up_layers=self._up_layers(down_layers,bn=bn,se=se)
         self.up_blocks=nn.ModuleList(up_layers)
         self.out_size=self.up_blocks[-1].out_size
         self.output_conv=self._output_layer(out_ch)
@@ -91,13 +81,13 @@ class UNet(nn.Module):
         for skip,block in zip(skips,self.up_blocks):
             x=block(x,skip)
         x=self.output_conv(x)
-        return x
+        return F.softmax(x)
     
     
     #
     # Internal Methods
     #
-    def _down_layers(self,in_ch,in_size,bn,se,act,act_kwargs):
+    def _down_layers(self,in_ch,in_size,bn,se):
         layers=[]
         for index in range(1,self.network_depth+1):
             layer=blocks.Down(
@@ -106,23 +96,21 @@ class UNet(nn.Module):
                 depth=self.conv_depth,
                 padding=self.padding,
                 bn=bn,
-                se=se,
-                act=act,
-                act_kwargs=act_kwargs)
+                se=se)
             in_ch=layer.out_ch
             in_size=layer.out_size
             layers.append(layer)
         return layers
 
         
-    def _up_layers(self,down_layers,bn,se,act,act_kwargs):
+    def _up_layers(self,down_layers,bn,se):
         down_layers=down_layers[::-1]
         down_layers.append(self.input_conv)
         first=down_layers.pop(0)
         in_ch=first.out_ch
         in_size=first.out_size
         layers=[]
-        for down_layer in down_layers:
+        for down_layer in down_layers:       
             crop=blocks.Up.cropping(down_layer.out_size,2*in_size)
             layer=blocks.Up(
                 in_ch,
@@ -131,9 +119,7 @@ class UNet(nn.Module):
                 crop=crop,
                 padding=self.padding,
                 bn=bn,
-                se=se,
-                act=act,
-                act_kwargs=act_kwargs)
+                se=se)
             in_ch=layer.out_ch
             in_size=layer.out_size
             layers.append(layer)

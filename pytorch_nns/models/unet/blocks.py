@@ -19,7 +19,7 @@ class Down(nn.Module):
         depth (int <2>): The number of convolutional layers 
         padding (int <0>): Padding. Use 0 or 1 since the kernal size is fixed at 3x3
         bn (bool <True>): Add batch norm layer after Conv Block
-        se (bool <True>): Add Squeeze and Excitation Block after Conv Block
+        se (bool <True>): Add Squeeze and Excitation Block after Max Pool
         act (str <'relu'>): Method name of activation function after Conv Block
         act_kwargs (dict <{}>): Kwargs for activation function after Conv Block
         
@@ -34,14 +34,18 @@ class Down(nn.Module):
             out_ch=None,
             depth=2,
             padding=0,
-            bn=True,
+            bn=False,
             se=True,
-            act='relu',
+            act=None,
             act_kwargs={}):
         super(Down, self).__init__()
         self.out_size=(in_size//2)-depth*(1-padding)*2
         self.out_ch=out_ch or in_ch*2
         self.down=nn.MaxPool2d(kernel_size=2)
+        if se:
+            self.se=blocks.SqueezeExcitation(in_ch)
+        else:
+            self.se=False
         self.conv_block=blocks.Conv(
             in_ch=in_ch,
             out_ch=self.out_ch,
@@ -49,13 +53,14 @@ class Down(nn.Module):
             depth=depth,
             padding=padding,
             bn=bn,
-            se=se,
             act=act,
             act_kwargs=act_kwargs)
 
         
     def forward(self, x):
         x=self.down(x)
+        if self.se:
+            x=self.se(x)
         return self.conv_block(x)
 
 
@@ -110,9 +115,9 @@ class Up(nn.Module):
             bilinear=False,
             crop=None,
             padding=0,
-            bn=True,
+            bn=False,
             se=True,
-            act='relu',
+            act=None,
             act_kwargs={}):
         super(Up, self).__init__()
         self.crop=crop
@@ -122,7 +127,7 @@ class Up(nn.Module):
         if bilinear:
             self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         else:
-            self.up = nn.ConvTranspose2d(in_ch, in_ch//2, 2, stride=2)
+            self.up = nn.ConvTranspose2d(in_ch, self.out_ch, 2, stride=2)
         self.conv_block=blocks.Conv(
             in_ch,
             self.out_size,
@@ -130,9 +135,12 @@ class Up(nn.Module):
             depth=depth,
             padding=padding,
             bn=bn,
-            se=se,
             act=act,
             act_kwargs=act_kwargs)
+        if se:
+            self.se=blocks.SqueezeExcitation(self.out_ch)
+        else:
+            self.se=False
         
         
     def forward(self, x, skip):
@@ -140,6 +148,8 @@ class Up(nn.Module):
         skip = self._crop(skip,x)
         x = torch.cat([skip, x], dim=1)
         x = self.conv_block(x)
+        if self.se:
+            x=self.se(x)
         return x
 
     

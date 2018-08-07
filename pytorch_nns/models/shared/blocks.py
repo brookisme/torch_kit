@@ -49,10 +49,11 @@ class Conv(nn.Module):
         kernel_size (int <3>): Kernal Size
         stride (int <1>): Stride
         padding (int <0>): Padding
+        in_block_relu (bool <True>): apply relu after conv layer in block
         bn (bool <True>): Add batch norm layer
         se (bool <True>): Add Squeeze and Excitation Block
-        act (str <'relu'>): Method name of activation function
-        act_kwargs (dict <{}>): Kwargs for activation function
+        act (str <'relu'>): Method name of activation function for output of block
+        act_kwargs (dict <{}>): Kwargs for activation function for output of block
         
     Properties:
         out_ch <int>: Number of channels of the output
@@ -67,9 +68,10 @@ class Conv(nn.Module):
             kernel_size=3, 
             stride=1, 
             padding=0, 
-            bn=True,
-            se=True,
-            act='relu',
+            in_block_relu=True,
+            bn=False,
+            se=False,
+            act=None,
             act_kwargs={}):
         super(Conv, self).__init__()
         self.out_ch=out_ch or 2*in_ch
@@ -79,7 +81,8 @@ class Conv(nn.Module):
             in_ch,
             kernel_size,
             stride,
-            padding)
+            padding,
+            in_block_relu)
         self.out_size=in_size-depth*2*((kernel_size-1)/2-padding)
 
         
@@ -113,7 +116,8 @@ class Conv(nn.Module):
             in_ch,
             kernel_size,
             stride,
-            padding):
+            padding,
+            in_block_relu):
         layers=[]
         for index in range(depth):
             if index!=0:
@@ -125,6 +129,8 @@ class Conv(nn.Module):
                     kernel_size=kernel_size,
                     stride=stride,
                     padding=padding))
+            if in_block_relu:
+                layers.append(nn.ReLU())
         self.conv_layers=nn.Sequential(*layers)
 
         
