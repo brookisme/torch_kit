@@ -87,7 +87,7 @@ class Trainer(object):
             )
         print(header,flush=True)
         for epoch in range(nb_epochs):
-            print_epoch=self._print_epoch(epoch)
+            print_epoch=self._print_epoch(epoch,nb_epochs)
             if print_epoch: h.print_line()
             self._run_epoch(
                 epoch=epoch,
@@ -145,7 +145,6 @@ class Trainer(object):
             if print_epoch: print(out_row,end="\r",flush=True)
         self._update_history(loss=avg_loss,acc=avg_acc)
         if print_epoch: print(out_row,flush=True)
-        # callback with epoch end
 
 
     def _batch_data(self,batch):
@@ -206,11 +205,11 @@ class Trainer(object):
         return path
 
 
-    def _print_epoch(self,epoch):
+    def _print_epoch(self,epoch,nb_epochs):
         if self.noise_reducer is None:
             return True
         else:
-            return epoch%self.noise_reducer is 0
+            return (epoch%self.noise_reducer is 0) or epoch==(nb_epochs-1)
 
 
 
