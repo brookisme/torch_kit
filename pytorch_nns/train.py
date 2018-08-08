@@ -32,12 +32,14 @@ class Trainer(object):
             force_cpu=False,
             name=None,
             history_dir=HISTORY_DIR,
-            weights_dir=WEIGHTS_DIR):
+            weights_dir=WEIGHTS_DIR,
+            noise_reducer=None):
         self.device=h.get_device(force_cpu)
         self.model=model.to(self.device)
         self.name=name
         self.history_dir=history_dir
         self.weights_dir=weights_dir
+        self.noise_reducer=noise_reducer
         if criterion and optimizer:
             self.compile(criterion=criterion,optimizer=optimizer)
         self.reset_history()
@@ -72,7 +74,7 @@ class Trainer(object):
         return path
 
 
-    def fit(self,train_loader,valid_loader=None,nb_epochs=1,noise_reducer=None):
+    def fit(self,train_loader,valid_loader=None,nb_epochs=1):
         # train
         h.print_line("=")
         header=ROW_TMPL.format(
@@ -84,12 +86,14 @@ class Trainer(object):
             'acc',
             )
         print(header,flush=True)
-        for epoch in range(nb_epochs): 
-            h.print_line()
+        for epoch in range(nb_epochs):
+            print_epoch=self._print_epoch(epoch)
+            if print_epoch: h.print_line()
             self._run_epoch(
                 epoch=epoch,
                 loader=train_loader,
-                train_mode=True)
+                train_mode=True,
+                print_epoch=print_epoch)
             # callback with train end
             # validate
             if valid_loader:
@@ -97,14 +101,16 @@ class Trainer(object):
                     self._run_epoch(
                         epoch=epoch,
                         loader=valid_loader,
-                        train_mode=False)
+                        train_mode=False,
+                        print_epoch=print_epoch)
         h.print_line("=")
 
 
     def _run_epoch(self,
             epoch,
             loader,
-            train_mode):
+            train_mode,
+            print_epoch):
         last_index=len(loader)-1
         total_loss=0
         avg_acc=0
@@ -136,9 +142,9 @@ class Trainer(object):
                 self._flt(avg_loss),
                 batch_acc,
                 self._flt(avg_acc))
-            print(out_row,end="\r",flush=True)
+            if print_epoch: print(out_row,end="\r",flush=True)
         self._update_history(loss=avg_loss,acc=avg_acc)
-        print(out_row,flush=True)
+        if print_epoch: print(out_row,flush=True)
         # callback with epoch end
 
 
@@ -198,6 +204,13 @@ class Trainer(object):
             if ext:
                 path="{}.{}".format(path,ext)
         return path
+
+
+    def _print_epoch(self,epoch):
+        if self.noise_reducer is None:
+            return True
+        else:
+            return epoch%self.noise_reducer is 0
 
 
 
