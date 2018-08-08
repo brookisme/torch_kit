@@ -19,6 +19,12 @@ HISTORY_NAME='history'
 WEIGHTS_NAME='weights'
 HISTORY='HISTORY'
 WEIGHTS='WEIGHTS'
+HISTORY_DICT={
+    'loss':[],
+    'acc':[],
+    'batch_loss':[],
+    'batch_acc':[]
+}
 
 
 
@@ -52,10 +58,8 @@ class Trainer(object):
 
     def reset_history(self):
         self.history={
-            'loss':[],
-            'acc':[],
-            'batch_loss':[],
-            'batch_acc':[]
+            'train':dict(HISTORY_DICT),
+            'valid':dict(HISTORY_DICT)
         }
 
 
@@ -77,9 +81,13 @@ class Trainer(object):
     def fit(self,train_loader,valid_loader=None,nb_epochs=1):
         # train
         h.print_line("=")
+        if valid_loader:
+            batch_head='Batch[{},{}]'.format(len(train_loader),len(valid_loader))
+        else:
+            batch_head='Batch[{}]'.format(len(train_loader))
         header=ROW_TMPL.format(
             'Epoch[{}]'.format(nb_epochs),
-            'Batch[{}]'.format(len(train_loader)),
+            batch_head,
             'batch_loss',
             'loss',
             'batch_acc',
@@ -127,8 +135,10 @@ class Trainer(object):
             avg_loss=total_loss/(i+1)
             batch_acc=log['acc']
             avg_acc=((avg_acc*i)+batch_acc)/(i+1)
-            self._update_history(batch_loss=batch_loss)
-            self._update_history(batch_acc=batch_acc)
+            self._update_history(
+                train_mode=train_mode,
+                batch_loss=batch_loss,
+                batch_acc=batch_acc)
             if i==last_index:
                 batch_loss='---'
                 batch_acc='---'
@@ -142,8 +152,12 @@ class Trainer(object):
                 self._flt(avg_loss),
                 batch_acc,
                 self._flt(avg_acc))
-            if print_epoch: print(out_row,end="\r",flush=True)
-        self._update_history(loss=avg_loss,acc=avg_acc)
+            if print_epoch: 
+                print(out_row,end="\r",flush=True)
+        self._update_history(
+            train_mode=train_mode,
+            loss=avg_loss,
+            acc=avg_acc)
         if print_epoch: print(out_row,flush=True)
 
 
@@ -178,11 +192,20 @@ class Trainer(object):
         return FLOAT_TMPL.format(flt)
 
 
-    def _update_history(self,loss=None,acc=None,batch_loss=None,batch_acc=None):
-        if loss is not None: self.history["loss"].append(loss)
-        if acc is not None: self.history["acc"].append(acc)
-        if batch_loss is not None: self.history["batch_loss"].append(batch_loss)
-        if batch_acc is not None: self.history["batch_acc"].append(batch_acc)
+    def _update_history(self,
+            train_mode,
+            loss=None,
+            acc=None,
+            batch_loss=None,
+            batch_acc=None):
+        if train_mode:
+            mode_key='train'
+        else:
+            mode_key='valid'
+        if loss is not None: self.history[mode_key]["loss"].append(loss)
+        if acc is not None: self.history[mode_key]["acc"].append(acc)
+        if batch_loss is not None: self.history[mode_key]["batch_loss"].append(batch_loss)
+        if batch_acc is not None: self.history[mode_key]["batch_acc"].append(batch_acc)
 
 
     def _build_path(self,path_type,name,path,absolute_path,timestamp,ext):
