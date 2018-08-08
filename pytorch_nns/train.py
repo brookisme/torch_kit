@@ -3,13 +3,14 @@ import torch.cuda
 import torch.optim as optim
 import torch.nn as nn
 import pytorch_nns.helpers as h
+import pytorch_nns.metrics as metrics
 #
 # CONFIG
 #
 
 INPT_KEY='input'
 TARG_KEY='target'
-ROW_TMPL='{:^10} {:^10} {:^15} {:^15}'
+ROW_TMPL='{:^10} {:^10} | {:^10} {:^10} | {:^10} {:^10}'
 FLOAT_TMPL='{:>.5f}'
 
 class Trainer(object):
@@ -34,7 +35,10 @@ class Trainer(object):
             'Epoch[{}]'.format(nb_epochs),
             'Batch[{}]'.format(len(train_loader)),
             'batch_loss',
-            'epoch_avg_loss')
+            'loss',
+            'batch_acc',
+            'acc',
+            )
         print(header,flush=True)
         for epoch in range(nb_epochs): 
             h.print_line()
@@ -57,22 +61,38 @@ class Trainer(object):
             epoch,
             loader,
             train_mode):
+        last_index=len(loader)-1
         total_loss=0
+        avg_acc=0
         if train_mode:
             self.model.train()
+            epoch_index=epoch+1
         else:
             self.model.eval()
+            epoch_index="-"
         for i, batch in enumerate(loader):
             log=self._run_batch(batch,train_mode)
-            # callback with log update line with log
-            # average / sum outputs with log
             batch_loss=log['loss']
             total_loss+=batch_loss
             avg_loss=total_loss/(i+1)
-            out_row=ROW_TMPL.format(epoch+1,i+1,self._flt(batch_loss),self._flt(avg_loss))
+            batch_acc=log['acc']
+            avg_acc=((avg_acc*i)+batch_acc)/(i+1)
+            if i==last_index:
+                batch_loss='---'
+                batch_acc='---'
+            else:
+                batch_loss=self._flt(batch_loss)
+                batch_acc=self._flt(batch_acc)            
+            out_row=ROW_TMPL.format(
+                epoch_index,
+                (i+1),
+                batch_loss,
+                self._flt(avg_loss),
+                batch_acc,
+                self._flt(avg_acc))
             print(out_row,end="\r",flush=True)
-        # callback with epoch end
         print(out_row,flush=True)
+        # callback with epoch end
 
 
     def _batch_data(self,batch):
@@ -96,7 +116,10 @@ class Trainer(object):
 
 
     def _batch_log(self,loss,outputs,targets):
-        return {"loss":loss}
+        log={}
+        log["loss"]=loss
+        log["acc"]=metrics.accuracy(outputs,targets)
+        return log
 
 
     def _flt(self,flt):
