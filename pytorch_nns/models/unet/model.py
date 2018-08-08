@@ -81,7 +81,7 @@ class UNet(nn.Module):
         for skip,block in zip(skips,self.up_blocks):
             x=block(x,skip)
         x=self.output_conv(x)
-        return F.softmax(x)
+        return F.softmax(x,dim=1)
     
     
     #
