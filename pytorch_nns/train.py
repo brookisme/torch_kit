@@ -145,7 +145,10 @@ class Trainer(object):
             epoch_index=epoch+1
         else:
             self.model.eval()
-            epoch_index="-"
+            if print_epoch:
+                epoch_index="-"
+            else:
+                epoch_index="t{}".format(epoch+1)
         for i, batch in enumerate(loader):
             log=self._run_batch(batch,train_mode)
             batch_loss=log['loss']
