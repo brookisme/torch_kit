@@ -1,24 +1,43 @@
-import time
+import os.path
+from datetime import datetime
 import torch.cuda
 import torch.optim as optim
 import torch.nn as nn
 import pytorch_nns.helpers as h
 import pytorch_nns.metrics as metrics
+
 #
 # CONFIG
 #
-
 INPT_KEY='input'
 TARG_KEY='target'
 ROW_TMPL='{:^10} {:^10} | {:^10} {:^10} | {:^10} {:^10}'
 FLOAT_TMPL='{:>.5f}'
+HISTORY_DIR='history'
+WEIGHTS_DIR='weights'
+HISTORY_NAME='history'
+WEIGHTS_NAME='weights'
+HISTORY='HISTORY'
+WEIGHTS='WEIGHTS'
+
+
 
 class Trainer(object):
 
 
-    def __init__(self,model,criterion=None,optimizer=None,force_cpu=False):
+    def __init__(self,
+            model,
+            criterion=None,
+            optimizer=None,
+            force_cpu=False,
+            name=None,
+            history_dir=HISTORY_DIR,
+            weights_dir=WEIGHTS_DIR):
         self.device=h.get_device(force_cpu)
         self.model=model.to(self.device)
+        self.name=name
+        self.history_dir=history_dir
+        self.weights_dir=weights_dir
         if criterion and optimizer:
             self.compile(criterion=criterion,optimizer=optimizer)
         self.reset_history()
@@ -36,6 +55,21 @@ class Trainer(object):
             'batch_loss':[],
             'batch_acc':[]
         }
+
+
+    def save_history(self,
+            name=None,
+            path=None,
+            timestamp=True,
+            absolute_path=False,
+            ext='p'):
+        path=self._build_path(HISTORY,name,path,absolute_path,timestamp,ext)
+        print("Trainer.save_history:",path)
+        history_dir=os.path.dirname(path)
+        if history_dir:
+            os.makedirs(history_dir,exist_ok=True)
+        h.save_pickle(self.history,path)
+        return path
 
 
     def fit(self,train_loader,valid_loader=None,nb_epochs=1,noise_reducer=None):
@@ -144,3 +178,34 @@ class Trainer(object):
         if acc is not None: self.history["acc"].append(acc)
         if batch_loss is not None: self.history["batch_loss"].append(batch_loss)
         if batch_acc is not None: self.history["batch_acc"].append(batch_acc)
+
+
+    def _build_path(self,path_type,name,path,absolute_path,timestamp,ext):
+        if not absolute_path:
+            if path_type==HISTORY:
+                root_dir=self.history_dir
+                default_name=HISTORY_NAME
+            else:
+                root_dir=self.weights_dir
+                default_name=WEIGHTS_NAME
+            name=name or self.name or default_name
+            parts=[p for p in [root_dir,path,name] if p is not None]
+            path=os.path.join(*parts)
+            if timestamp:
+                path="{}.{}".format(
+                    path,
+                    datetime.now().strftime("%Y-%m-%dT%H:%M:%S"))
+            if ext:
+                path="{}.{}".format(path,ext)
+        return path
+
+
+
+
+
+
+
+
+
+
+
