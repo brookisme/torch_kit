@@ -21,11 +21,21 @@ class Trainer(object):
         self.model=model.to(self.device)
         if criterion and optimizer:
             self.compile(criterion=criterion,optimizer=optimizer)
+        self.reset_history()
 
 
     def compile(self,criterion,optimizer):
         self.criterion=criterion
         self.optimizer=optimizer
+
+
+    def reset_history(self):
+        self.history={
+            'loss':[],
+            'acc':[],
+            'batch_loss':[],
+            'batch_acc':[]
+        }
 
 
     def fit(self,train_loader,valid_loader=None,nb_epochs=1,noise_reducer=None):
@@ -77,6 +87,8 @@ class Trainer(object):
             avg_loss=total_loss/(i+1)
             batch_acc=log['acc']
             avg_acc=((avg_acc*i)+batch_acc)/(i+1)
+            self._update_history(batch_loss=batch_loss)
+            self._update_history(batch_acc=batch_acc)
             if i==last_index:
                 batch_loss='---'
                 batch_acc='---'
@@ -91,6 +103,7 @@ class Trainer(object):
                 batch_acc,
                 self._flt(avg_acc))
             print(out_row,end="\r",flush=True)
+        self._update_history(loss=avg_loss,acc=avg_acc)
         print(out_row,flush=True)
         # callback with epoch end
 
@@ -125,3 +138,9 @@ class Trainer(object):
     def _flt(self,flt):
         return FLOAT_TMPL.format(flt)
 
+
+    def _update_history(self,loss=None,acc=None,batch_loss=None,batch_acc=None):
+        if loss is not None: self.history["loss"].append(loss)
+        if acc is not None: self.history["acc"].append(acc)
+        if batch_loss is not None: self.history["batch_loss"].append(batch_loss)
+        if batch_acc is not None: self.history["batch_acc"].append(batch_acc)
