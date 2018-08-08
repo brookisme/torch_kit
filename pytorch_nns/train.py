@@ -69,24 +69,42 @@ class Trainer(object):
             timestamp=True,
             absolute_path=False,
             ext='p'):
-        path=self._build_path(HISTORY,name,path,absolute_path,timestamp,ext)
-        print("Trainer.save_history:",path)
-        history_dir=os.path.dirname(path)
-        if history_dir:
-            os.makedirs(history_dir,exist_ok=True)
-        h.save_pickle(self.history,path)
-        return path
+        return self._save_obj(
+                self.history,
+                HISTORY,
+                name=name,
+                path=path,
+                timestamp=timestamp,
+                absolute_path=absolute_path,
+                ext='p')
+
+
+
+    def save_weights(self,
+            name=None,
+            path=None,
+            timestamp=True,
+            absolute_path=False,
+            ext='p'):
+        return self._save_obj(
+                self.model.state_dict(),
+                WEIGHTS,
+                name=name,
+                path=path,
+                timestamp=timestamp,
+                absolute_path=absolute_path,
+                ext='p')
 
 
     def fit(self,train_loader,valid_loader=None,nb_epochs=1):
         # train
         h.print_line("=")
         if valid_loader:
-            batch_head='Batch[{},{}]'.format(len(train_loader),len(valid_loader))
+            batch_head='B[{},{}]'.format(len(train_loader),len(valid_loader))
         else:
-            batch_head='Batch[{}]'.format(len(train_loader))
+            batch_head='B[{}]'.format(len(train_loader))
         header=ROW_TMPL.format(
-            'Epoch[{}]'.format(nb_epochs),
+            'E[{}]'.format(nb_epochs),
             batch_head,
             'batch_loss',
             'loss',
@@ -152,8 +170,7 @@ class Trainer(object):
                 self._flt(avg_loss),
                 batch_acc,
                 self._flt(avg_acc))
-            if print_epoch: 
-                print(out_row,end="\r",flush=True)
+            print(out_row,end="\r",flush=True)
         self._update_history(
             train_mode=train_mode,
             loss=avg_loss,
@@ -235,9 +252,21 @@ class Trainer(object):
             return (epoch%self.noise_reducer is 0) or epoch==(nb_epochs-1)
 
 
-
-
-
+    def _save_obj(self,
+            obj,
+            obj_name,
+            name=None,
+            path=None,
+            timestamp=True,
+            absolute_path=False,
+            ext='p'):
+        path=self._build_path(obj_name,name,path,absolute_path,timestamp,ext)
+        print("Trainer.save_{}:".format(obj_name.lower()),path)
+        obj_dir=os.path.dirname(path)
+        if obj_dir:
+            os.makedirs(obj_dir,exist_ok=True)
+        torch.save(obj,path)
+        return path
 
 
 
