@@ -34,7 +34,6 @@ def print_line(char='-',length=75):
     print(char*length)
 
 
-
 #
 # PyTorch
 #
