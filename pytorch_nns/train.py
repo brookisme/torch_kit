@@ -19,12 +19,18 @@ HISTORY_NAME='history'
 WEIGHTS_NAME='weights'
 HISTORY='HISTORY'
 WEIGHTS='WEIGHTS'
-HISTORY_DICT={
-    'loss':[],
-    'acc':[],
-    'batch_loss':[],
-    'batch_acc':[]
-}
+
+
+#
+# HELPERS
+#
+def _init_history():
+    return {
+        'loss':[],
+        'acc':[],
+        'batch_loss':[],
+        'batch_acc':[]
+    }
 
 
 
@@ -58,8 +64,8 @@ class Trainer(object):
 
     def reset_history(self):
         self.history={
-            'train':dict(HISTORY_DICT),
-            'valid':dict(HISTORY_DICT)
+            'train':_init_history(),
+            'valid':_init_history()
         }
 
 
