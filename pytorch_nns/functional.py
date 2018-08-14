@@ -28,7 +28,6 @@ def weighted_categorical_crossentropy(inpt,targ,weights):
     return -weighted_losses_transpose.mean()*targ.size(1)
 
 
-
 def dice(inpt,targ,weights=None):
     """ (optionally weighted) dice
     
@@ -50,7 +49,7 @@ def dice(inpt,targ,weights=None):
     return -dice_coefs.mean()
 
 
-def soft_dice_loss(y_true, y_pred, epsilon=1e-6): 
+def soft_dice_loss(y_pred, y_true, epsilon=1e-6): 
     ''' TODO: COMPARE MY DICE TO THIS
 
     https://www.jeremyjordan.me/semantic-segmentation/#loss

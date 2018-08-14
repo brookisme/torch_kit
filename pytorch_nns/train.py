@@ -19,7 +19,7 @@ HISTORY_NAME='history'
 WEIGHTS_NAME='weights'
 HISTORY='HISTORY'
 WEIGHTS='WEIGHTS'
-
+TS_FMT="%Y-%m-%dT%H:%M:%S"
 
 #
 # HELPERS
@@ -74,7 +74,8 @@ class Trainer(object):
             path=None,
             timestamp=True,
             absolute_path=False,
-            ext='p'):
+            ext='p',
+            noisy=True):
         return self._save_obj(
                 self.history,
                 HISTORY,
@@ -82,7 +83,8 @@ class Trainer(object):
                 path=path,
                 timestamp=timestamp,
                 absolute_path=absolute_path,
-                ext='p')
+                ext=ext,
+                noisy=noisy)
 
 
 
@@ -91,7 +93,8 @@ class Trainer(object):
             path=None,
             timestamp=True,
             absolute_path=False,
-            ext='p'):
+            ext='p',
+            noisy=True):
         return self._save_obj(
                 self.model.state_dict(),
                 WEIGHTS,
@@ -99,12 +102,33 @@ class Trainer(object):
                 path=path,
                 timestamp=timestamp,
                 absolute_path=absolute_path,
-                ext='p')
+                ext=ext,
+                noisy=noisy)
 
 
-    def fit(self,train_loader,valid_loader=None,nb_epochs=1):
+    def fit(self,
+            train_loader,
+            valid_loader=None,
+            nb_epochs=1,
+            run_ident=None,
+            save_best=False,
+            save_frequency=0,
+            save_last=False,
+            initial_loss=9e12):
+        # initialize training
+        self.best_loss=initial_loss
+        self.best_epoch=-1
+        self.save_best=save_best
+        self.save_last=save_last
+        self.train_start_time=datetime.now()
+        self.train_start_timestamp=self.train_start_time.strftime(TS_FMT)
+        name_parts=[(self.name or WEIGHTS_NAME),run_ident]
+        self.weights_name=self._safe_join(name_parts)
+        self.save_frequency=save_frequency
         # train
         h.print_line("=")
+        self.train_loader=train_loader
+        self.valid_loader=valid_loader
         if valid_loader:
             batch_head='B[{},{}]'.format(len(train_loader),len(valid_loader))
         else:
@@ -135,6 +159,18 @@ class Trainer(object):
                         loader=valid_loader,
                         train_mode=False,
                         print_epoch=print_epoch)
+        self.train_end_time=datetime.now()
+        self.train_end_timestamp=self.train_start_time.strftime(TS_FMT)
+        if self.save_frequency or self.save_last:
+            self.weights_path=self.save_weights(
+                name=self.weights_name,
+                timestamp=self.train_start_timestamp,
+                noisy=False)
+            h.print_line()
+            print("Trainer.fit:weights:",self.weights_path)
+        if self.save_best:
+            h.print_line()
+            print("Trainer.fit:best-weights:",self.best_weights_path)
         h.print_line("=")
 
 
@@ -180,6 +216,27 @@ class Trainer(object):
                 batch_acc,
                 self._flt(avg_acc))
             print(out_row,end="\r",flush=True)
+        if (self.valid_loader and (not train_mode)) or (not self.valid_loader):
+            if self.best_loss>avg_loss:
+                self.best_loss=avg_loss
+                self.best_epoch=epoch
+                if self.save_best:
+                    self.best_weights_path=self.save_weights(
+                        name="{}.BEST".format(self.weights_name),
+                        timestamp=self.train_start_timestamp,
+                        noisy=False)
+            if self.save_frequency:
+                if (epoch%self.save_frequency is 0) or (epoch==(nb_epochs-1)):
+                    self.weights_path=self.save_weights(
+                        name=self.weights_name,
+                        timestamp=self.train_start_timestamp,
+                        noisy=False)
+        else:
+            self.model.eval()
+            if print_epoch:
+                epoch_index="-"
+            else:
+                epoch_index="t{}".format(epoch+1)
         self._update_history(
             train_mode=train_mode,
             loss=avg_loss,
@@ -246,12 +303,17 @@ class Trainer(object):
             parts=[p for p in [root_dir,path,name] if p is not None]
             path=os.path.join(*parts)
             if timestamp:
-                path="{}.{}".format(
-                    path,
-                    datetime.now().strftime("%Y-%m-%dT%H:%M:%S"))
+                if not isinstance(timestamp,str):
+                    timestamp=datetime.now().strftime(TS_FMT)
+                path="{}.{}".format(path,timestamp)
             if ext:
                 path="{}.{}".format(path,ext)
         return path
+
+
+    def _safe_join(self,parts,char='.'):
+        parts=[p for p in parts if p]
+        return char.join(parts)
 
 
     def _print_epoch(self,epoch,nb_epochs):
@@ -268,9 +330,10 @@ class Trainer(object):
             path=None,
             timestamp=True,
             absolute_path=False,
-            ext='p'):
+            ext='p',
+            noisy=True):
         path=self._build_path(obj_name,name,path,absolute_path,timestamp,ext)
-        print("Trainer.save_{}:".format(obj_name.lower()),path)
+        if noisy: print("Trainer.save_{}:".format(obj_name.lower()),path)
         obj_dir=os.path.dirname(path)
         if obj_dir:
             os.makedirs(obj_dir,exist_ok=True)

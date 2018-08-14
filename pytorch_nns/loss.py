@@ -33,14 +33,17 @@ class Dice(nn.Module):
             * weights<tensor|nparray|list|None>: optional category weights
             * device<str|None>: device-name. if exists, send weights to specified device
     """
-    def __init__(self, weights, device=None):
+    def __init__(self, weights=None, device=None):
         super(Dice, self).__init__()
-        self.weights=h.to_tensor(weights)
-        if device:
-            self.weights=self.weights.to(device)
+        if weights:
+            weights=h.to_tensor(weights)
+            if device:
+                weights=weights.to(device)
+        self.weights=weights
         
     def forward(self, inpt, targ):
-        return f.dice(inpt,targ,self.weights)
+        # return f.dice(inpt,targ,self.weights)
+        return f.soft_dice_loss(inpt,targ,self.weights)
 
 
 
