@@ -125,8 +125,12 @@ class Trainer(object):
         name_parts=[(self.name or WEIGHTS_NAME),run_ident]
         self.weights_name=self._safe_join(name_parts)
         self.save_frequency=save_frequency
+        self.nb_epochs=nb_epochs
         # train
         h.print_line("=")
+        print("Trainer.fit:start_time: {}".format(
+            self.train_start_timestamp))
+        h.print_line()
         self.train_loader=train_loader
         self.valid_loader=valid_loader
         if valid_loader:
@@ -143,7 +147,7 @@ class Trainer(object):
             )
         print(header,flush=True)
         for epoch in range(nb_epochs):
-            print_epoch=self._print_epoch(epoch,nb_epochs)
+            print_epoch=self._print_epoch(epoch)
             if print_epoch: h.print_line()
             self._run_epoch(
                 epoch=epoch,
@@ -171,6 +175,11 @@ class Trainer(object):
         if self.save_best:
             h.print_line()
             print("Trainer.fit:best-weights:",self.best_weights_path)
+        h.print_line()
+        print("Trainer.fit:end_time: {}".format(
+            self.train_end_timestamp))
+        print("Trainer.fit:duration: {}".format(
+            str(self.train_end_time-self.train_start_time)))
         h.print_line("=")
 
 
@@ -226,7 +235,7 @@ class Trainer(object):
                         timestamp=self.train_start_timestamp,
                         noisy=False)
             if self.save_frequency:
-                if (epoch%self.save_frequency is 0) or (epoch==(nb_epochs-1)):
+                if (epoch%self.save_frequency is 0) or (epoch==(self.nb_epochs-1)):
                     self.weights_path=self.save_weights(
                         name=self.weights_name,
                         timestamp=self.train_start_timestamp,
@@ -316,11 +325,11 @@ class Trainer(object):
         return char.join(parts)
 
 
-    def _print_epoch(self,epoch,nb_epochs):
+    def _print_epoch(self,epoch):
         if self.noise_reducer is None:
             return True
         else:
-            return (epoch%self.noise_reducer is 0) or epoch==(nb_epochs-1)
+            return (epoch%self.noise_reducer is 0) or epoch==(self.nb_epochs-1)
 
 
     def _save_obj(self,
