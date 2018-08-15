@@ -4,6 +4,29 @@ import torch.nn.functional as F
 
 
 
+class ResBridge(nn.Module):
+    r""" ResBridge
+
+    Args:
+        block: pytorch block
+        multiplier <float [0.5]>: block multiplier
+        
+    Links:
+        TODO: GOT IDEA FROM FASTAI SOMEWHERE
+
+    """
+    def __init__(self, block, multiplier=0.5):
+        super(ResBridge, self).__init__()
+        self.block=block
+        self.multiplier=multiplier
+
+        
+    def forward(self, x):
+        return x + (self.multiplier * self.block(x))
+
+
+
+
 class SqueezeExcitation(nn.Module):
     r""" Squeeze and Excitation Block
 
