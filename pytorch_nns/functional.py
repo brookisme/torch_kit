@@ -1,10 +1,47 @@
+import math
 import torch
 import pytorch_nns.helpers as h
 import numpy as np
 #
 # CONFIG
 #
-EPS=1e-11
+EPS=1e-9
+
+
+
+#
+# HELPERS
+#
+def category_weights(
+        count_dict,
+        total=None,
+        use_log=True,
+        log_multiplier=0.15,
+        min_weight=1.0):
+    """ category_weights
+
+    Args:
+        * count_dict <dict>: dictionary of category counts 
+        * total <int|None>: total count (if None compute)
+        * use_log <bool [True]>: take log of distribution weight
+        * log_multiplier <float>: multiplier for log argument
+        * min_weight <float [1.0]>: min weight value
+    Returns:
+        * mean reduction of weighted categorical crossentropy
+    """
+    weights={}
+    if not total:
+        total=sum(list(count_dict.values()))
+    for key in count_dict.keys():
+        v=count_dict[key]
+        if not v: v=EPS
+        weight=total/float(v)
+        if use_log:
+            weight=math.log(log_multiplier*weight)
+        weights[key]=max(weight,min_weight)
+    return weights
+
+
 
 
 #
@@ -49,6 +86,7 @@ def dice(inpt,targ,weights=None):
     return -dice_coefs.mean()
 
 
+"""
 def soft_dice_loss(y_pred, y_true, epsilon=1e-6): 
     ''' TODO: COMPARE MY DICE TO THIS
 
@@ -78,3 +116,4 @@ def soft_dice_loss(y_pred, y_true, epsilon=1e-6):
     numerator = 2. * np.sum(y_pred * y_true, axes)
     denominator = np.sum(np.square(y_pred) + np.square(y_true), axes)
     return 1 - np.mean(numerator / (denominator + epsilon)) # average over classes and batch
+"""
