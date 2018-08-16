@@ -21,6 +21,7 @@ HISTORY='HISTORY'
 WEIGHTS='WEIGHTS'
 TS_FMT="%Y-%m-%dT%H:%M:%S"
 
+
 #
 # HELPERS
 #
@@ -114,6 +115,8 @@ class Trainer(object):
             save_best=False,
             save_frequency=0,
             save_last=False,
+            early_stopping=False,
+            patience=0,
             initial_loss=9e12):
         # initialize training
         self.best_loss=initial_loss
@@ -126,6 +129,9 @@ class Trainer(object):
         self.weights_name=self._safe_join(name_parts)
         self.save_frequency=save_frequency
         self.nb_epochs=nb_epochs
+        self.early_stopping=early_stopping
+        self.patience=patience
+        self.nb_increased_losses=0
         # train
         h.print_line("=")
         print("Trainer.fit:start_time: {}".format(
@@ -147,6 +153,7 @@ class Trainer(object):
             )
         print(header,flush=True)
         for epoch in range(nb_epochs):
+            # train
             print_epoch=self._print_epoch(epoch)
             if print_epoch: h.print_line()
             self._run_epoch(
@@ -154,8 +161,7 @@ class Trainer(object):
                 loader=train_loader,
                 train_mode=True,
                 print_epoch=print_epoch)
-            # callback with train end
-            # validate
+            # validation
             if valid_loader:
                 with torch.no_grad():
                     self._run_epoch(
@@ -163,6 +169,10 @@ class Trainer(object):
                         loader=valid_loader,
                         train_mode=False,
                         print_epoch=print_epoch)
+            # early-stopping
+            if self.early_stopping:
+                if self.nb_increased_losses>self.patience:
+                    break
         self.train_end_time=datetime.now()
         self.train_end_timestamp=self.train_start_time.strftime(TS_FMT)
         if self.save_frequency or self.save_last:
@@ -225,7 +235,7 @@ class Trainer(object):
                 batch_acc,
                 self._flt(avg_acc))
             print(out_row,end="\r",flush=True)
-        if (self.valid_loader and (not train_mode)) or (not self.valid_loader):
+        if self._check_loss(train_mode):
             if self.best_loss>avg_loss:
                 self.best_loss=avg_loss
                 self.best_epoch=epoch
@@ -234,6 +244,9 @@ class Trainer(object):
                         name="{}.BEST".format(self.weights_name),
                         timestamp=self.train_start_timestamp,
                         noisy=False)
+                self.nb_increased_losses=0
+            else:
+                self.nb_increased_losses+=1
             if self.save_frequency:
                 if (epoch%self.save_frequency is 0) or (epoch==(self.nb_epochs-1)):
                     self.weights_path=self.save_weights(
@@ -278,6 +291,12 @@ class Trainer(object):
         log["loss"]=loss
         log["acc"]=metrics.accuracy(outputs,targets)
         return log
+
+
+    def _check_loss(self,train_mode):
+        is_eval_mode=(self.valid_loader and (not train_mode))
+        has_no_validation=(not self.valid_loader)
+        return is_eval_mode or has_no_validation
 
 
     def _flt(self,flt):
@@ -326,10 +345,10 @@ class Trainer(object):
 
 
     def _print_epoch(self,epoch):
-        if self.noise_reducer is None:
-            return True
-        else:
+        if self.noise_reducer:
             return (epoch%self.noise_reducer is 0) or epoch==(self.nb_epochs-1)
+        else:
+            return True
 
 
     def _save_obj(self,
