@@ -4,25 +4,33 @@ import torch.nn.functional as F
 
 
 
-class ResBridge(nn.Module):
-    r""" ResBridge
+class ResBlock(nn.Module):
+    r""" ResBlock
 
     Args:
-        block: pytorch block
-        multiplier <float [0.5]>: block multiplier
+        layers: pytorch layers
+        multiplier <float [0.5]>: ident multiplier
+        crop: <int> (in_size-out_size)/2
         
     Links:
         TODO: GOT IDEA FROM FASTAI SOMEWHERE
 
     """
-    def __init__(self, block, multiplier=0.5):
-        super(ResBridge, self).__init__()
-        self.block=block
+    def __init__(self,layers,multiplier=0.5,crop=None):
+        super(ResBlock, self).__init__()
+        self.layers=nn.Sequential(*layers)
         self.multiplier=multiplier
+        self.crop=crop
+    
 
-        
     def forward(self, x):
-        return x + (self.multiplier * self.block(x))
+        return (self.multiplier*self._crop(x)) + self.layers(x)
+
+
+    def _crop(self,x):
+        if self.crop>0:
+            x=x[:,:,self.crop:-self.crop,self.crop:-self.crop]
+        return x
 
 
 

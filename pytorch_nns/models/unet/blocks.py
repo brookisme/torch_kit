@@ -39,8 +39,9 @@ class Down(nn.Module):
             act=None,
             act_kwargs={}):
         super(Down, self).__init__()
-        self.out_size=(in_size//2)-depth*(1-padding)*2
-        self.out_ch=out_ch or in_ch*2
+        self.in_size=in_size
+        self.out_size=(in_size//2)-2*depth*(1-padding)
+        self.out_ch=out_ch or 2*in_ch
         self.down=nn.MaxPool2d(kernel_size=2)
         if se:
             self.se=blocks.SqueezeExcitation(self.out_ch)
@@ -59,12 +60,10 @@ class Down(nn.Module):
         
     def forward(self, x):
         x=self.down(x)
-        x = self.conv_block(x)
+        x=self.conv_block(x)
         if self.se:
             x=self.se(x)
         return x
-
-
 
 
 class Up(nn.Module):

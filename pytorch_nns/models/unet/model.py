@@ -44,8 +44,7 @@ class UNet(nn.Module):
             init_ch=64,
             padding=0,
             bn=False,
-            se=True,
-            res=True):
+            se=True):
         super(UNet, self).__init__()
         self.network_depth=network_depth
         self.conv_depth=conv_depth
