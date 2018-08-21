@@ -38,10 +38,15 @@ def to_vector(arr):
 
 
 def image_data(path):
-    with rio.open(path) as src:
+    with rio.open(path,'r') as src:
         profile=src.profile
         image=src.read()
     return image, profile
+
+
+def image_write(im,path,profile):
+    with rio.open(path,'w',**profile) as dst:
+        dst.write(im)
 
 
 """ Crop Image
