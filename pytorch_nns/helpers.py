@@ -45,7 +45,25 @@ def to_tensor(v):
     return v
 
 
-
 def get_device(force_cpu=False):
     use_gpu=((not force_cpu) and torch.cuda.is_available())
     return torch.device(CUDA if use_gpu else CPU)
+
+
+def get_model(
+        net,
+        config={},
+        weight_initializer=None,
+        init_weights=None,
+        device=None,
+        seed=None):
+    if seed:
+        torch.manual_seed(seed)
+    model=net(**config)
+    if init_weights:
+        model.load_state_dict(torch.load(init_weights))
+    if device:
+        model=model.to(device)
+    if weight_initializer:
+        model.apply(weight_initializer)
+    return model
