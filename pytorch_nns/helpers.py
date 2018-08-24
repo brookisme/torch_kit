@@ -56,14 +56,21 @@ def get_model(
         weight_initializer=None,
         init_weights=None,
         device=None,
+        map_location=None,
         seed=None):
     if seed:
         torch.manual_seed(seed)
     model=net(**config)
     if init_weights:
-        model.load_state_dict(torch.load(init_weights))
+        if not map_location:
+            if device and (device.type=='cpu'):
+                map_location='cpu'
+        model.load_state_dict(torch.load(init_weights,map_location=map_location))
     if device:
         model=model.to(device)
     if weight_initializer:
         model.apply(weight_initializer)
     return model
+
+
+
