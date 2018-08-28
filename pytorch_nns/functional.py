@@ -16,15 +16,16 @@ def category_weights(
         count_dict,
         total=None,
         use_log=True,
-        log_multiplier=0.15,
-        min_weight=1.0):
+        multiplier=0.15,
+        min_weight=1.0,
+        max_weight=25.0):
     """ category_weights
 
     Args:
         * count_dict <dict>: dictionary of category counts 
         * total <int|None>: total count (if None compute)
         * use_log <bool [True]>: take log of distribution weight
-        * log_multiplier <float>: multiplier for log argument
+        * multiplier <float>: multiplier for log argument
         * min_weight <float [1.0]>: min weight value
     Returns:
         * mean reduction of weighted categorical crossentropy
@@ -35,10 +36,10 @@ def category_weights(
     for key in count_dict.keys():
         v=count_dict[key]
         if not v: v=EPS
-        weight=total/float(v)
+        weight=multiplier*total/float(v)
         if use_log:
-            weight=math.log(log_multiplier*weight)
-        weights[key]=max(weight,min_weight)
+            weight=math.log(weight)
+        weights[key]=min(max_weight,max(weight,min_weight))
     return weights
 
 
