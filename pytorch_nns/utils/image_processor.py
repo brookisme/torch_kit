@@ -5,7 +5,8 @@ import rasterio as rio
 # CONFIG
 #
 EPS=1e-12
-AXIS=(1,2)
+BANDS_FIRST_AXES=(1,2)
+BANDS_LAST_AXES=(0,1)
 S2_MEANS=np.array([
     496.532625,
     760.189516,
@@ -29,8 +30,11 @@ CALIBRATION_TARGET_STDEVS=[45.1631210680867, 39.24848875286493, 36.5475878071932
 #
 # HELPERS
 # 
-def is_bands_first(axis):
-    return axis==(1,2)
+def is_bands_first(axes):
+    if isinstance(axes,int):
+        return axes==0
+    else:
+        return axes==BANDS_FIRST_AXES
 
 
 def to_vector(arr):
@@ -51,8 +55,8 @@ def image_write(im,path,profile):
 
 """ Crop Image
 """
-def crop(image,size,axis=AXIS):
-    if is_bands_first(axis):
+def crop(image,size,axes=BANDS_FIRST_AXES):
+    if is_bands_first(axes):
         return image[:,size:-size,size:-size]
     else:
         return image[size:-size,size:-size]
@@ -60,10 +64,10 @@ def crop(image,size,axis=AXIS):
 
 """ Center Image
 """
-def center(image,means=None,to_int=True,axis=AXIS):
+def center(image,means=None,to_int=True,axes=BANDS_FIRST_AXES):
     if means is None:
-        means=np.mean(image,axis=axis)
-    if is_bands_first(axis):
+        means=np.mean(image,axis=axes)
+    if is_bands_first(axes):
         means=to_vector(means)
     image=(image-means)
     if to_int:
@@ -73,11 +77,11 @@ def center(image,means=None,to_int=True,axis=AXIS):
 
 """ Normalize Image
 """
-def normalize(image,means=None,stdevs=None,axis=AXIS):
+def normalize(image,means=None,stdevs=None,axes=BANDS_FIRST_AXES):
     if stdevs is None:
-        stdevs=np.std(image,axis=axis)   
-    image=center(image,means=means,to_int=False,axis=axis)
-    if is_bands_first(axis):
+        stdevs=np.std(image,axis=axes)   
+    image=center(image,means=means,to_int=False,axes=axes)
+    if is_bands_first(axes):
         stdevs=to_vector(stdevs)
     return image/stdevs
 
@@ -92,8 +96,8 @@ def normalize(image,means=None,stdevs=None,axis=AXIS):
     Returns:
         <arr>: (b1-b2)/(b1+b2)
 """
-def normalized_difference(image,band_1,band_2,axis=AXIS):
-    if is_bands_first(axis):
+def normalized_difference(image,band_1,band_2,axes=BANDS_FIRST_AXES):
+    if is_bands_first(axes):
         band_1=image[band_1]
         band_2=image[band_2]
     else:
@@ -104,7 +108,7 @@ def normalized_difference(image,band_1,band_2,axis=AXIS):
 
 """ Calibrate Image
 """
-def calibrate(image,means=None,stdevs=None,bands=None,band_axis=0):
+def calibrate(image,means=None,stdevs=None,bands=None,axes=BANDS_FIRST_AXES):
     """ WIP:
     
      * RETURNS BANDS LAST IMAGE
@@ -112,19 +116,23 @@ def calibrate(image,means=None,stdevs=None,bands=None,band_axis=0):
      * USING RGB REFS FROM Kaggle-Planet-Comp
 
     """
-    nb_bands=image.shape[band_axis]
+    bands_first=is_bands_first(axes)
+    if bands_first:
+        nb_bands=image.shape[0]
+    else:
+        nb_bands=image.shape[-1]
     if nb_bands<3:
         raise ValueError('calibrate requires image with at least 3 bands')
     elif nb_bands>3:
-        if band_axis is 0:
+        if bands_first:
             if bands: image=image[bands]
             else: image=image[:3]
         else:
             if bands: image=image[:,:,bands]
             else: image=image[:,:,:3]
-    if band_axis!=-1:
-        image=np.swapaxes(image,band_axis,-1)
-    image=normalize(image,means=means,stdevs=stdevs)
+    if bands_first:
+        image=image.swapaxes(0,1).swapaxes(1,2)
+    image=normalize(image,means=means,stdevs=stdevs,axes=BANDS_LAST_AXES)
     image=(image*CALIBRATION_TARGET_STDEVS)+CALIBRATION_TARGET_MEANS
     image=np.clip(image,0,255)
     return image.astype('uint8')
@@ -133,8 +141,8 @@ def calibrate(image,means=None,stdevs=None,bands=None,band_axis=0):
 """ Augment Image
 """
 def augment(image,k=None,flip=None):
-    if k: image=np.rot90(image,k,axes=AXIS)
-    if flip: image=np.flip(image,AXIS[0])
+    if k: image=np.rot90(image,k,axes=BANDS_FIRST_AXES)
+    if flip: image=np.flip(image,BANDS_FIRST_AXES[0])
     return image
 
 
