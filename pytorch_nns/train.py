@@ -182,7 +182,7 @@ class Trainer(object):
                 noisy=False)
             h.print_line()
             print("Trainer.fit:weights:",self.weights_path)
-            print("Trainer.fit:best-epoch:",self.best_epoch)
+            print("Trainer.fit:best-epoch: {} ({})".format(self.best_epoch,self.best_loss))
         if self.save_best:
             h.print_line()
             print("Trainer.fit:best-weights:",self.best_weights_path)
