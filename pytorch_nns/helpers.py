@@ -67,10 +67,12 @@ def get_model(
         if not map_location:
             if device and (device.type=='cpu'):
                 map_location='cpu'
+        print("init_weights: ",init_weights)
         model.load_state_dict(torch.load(init_weights,map_location=map_location))
     if device:
         model=model.to(device)
     if weight_initializer:
+        print("weight_initializer: ",weight_initializer)
         model.apply(weight_initializer)
     return model
 
