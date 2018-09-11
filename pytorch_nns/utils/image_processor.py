@@ -155,8 +155,7 @@ class GTiffLoader(object):
         self.bands=bands
         self._set_properities()
         self._set_data()
-        if bands:
-            self.image=self.image[bands]
+        
 
 
 
@@ -230,19 +229,43 @@ class GTiffLoader(object):
 
 
     def _set_data(self):
-        with rio.open(self.path) as src:
-            self.profile=src.profile
-            self.image=src.read()
-            self.size=self.image.shape[1]
+        if isinstance(self.path,str):
+            self.image, self.profile=self._image_and_profile(
+                self.path,
+                self.bands)
+        elif isinstance(self.path,list):
+            imgs=[]
+            if not self.bands:
+                self.bands=[None]*len(self.path)
+            for path,bnds in zip(self.path,self.bands):
+                img,prfl=self._image_and_profile(path,bnds)
+                imgs.append(img)
+            self.image=np.vstack(imgs)
+            self.profile=prfl
+        else:
+            raise ValueError('GTiffLoader._set_data: path must be <str> or <list<str>>')
+        self.profile['count']=self.image.shape[0]
+        self.size=self.image.shape[1]
+
+
+
+    def _image_and_profile(self,path,bands):
+        with rio.open(path) as src:
+            profile=src.profile
+            image=src.read()
+            size=image.shape[1]
             if self.cropping:
-                self.image=crop(self.image,self.cropping)
-                self.profile=self._crop_profile(src)
+                image=crop(image,self.cropping)
+                profile=self._crop_profile(src,size,profile)
+        if bands:
+            image=image[bands]
+        return image, profile
 
     
-    def _crop_profile(self,src):
-        out_size=self.size-2*self.cropping
+    def _crop_profile(self,src,size,profile):
+        out_size=size-2*self.cropping
         win=((self.cropping,self.cropping),(out_size,out_size))
-        profile=self.profile.copy()
+        profile=profile.copy()
         profile.pop('transform',None)
         profile['width']=out_size
         profile['height']=out_size
