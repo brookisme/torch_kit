@@ -1,10 +1,14 @@
 import torch
 import numpy as np
 import pickle
+import json
+from datetime import datetime
+
 
 #
 # CONFIG
 #
+TIMESTAMP_FMT="%H:%M:%S (%Y-%m-%d)"
 CUDA='cuda'
 CPU='cpu'
 
@@ -12,6 +16,18 @@ CPU='cpu'
 #
 # Python
 #
+def read_json(path):
+    with open(path,'rb') as f:
+        data=json.load(f)
+    return data
+
+
+def get_time():
+    now=datetime.now()
+    now_str=now.strftime(TIMESTAMP_FMT)
+    return now,now_str
+
+
 def save_pickle(obj,path):
     """ save object to pickle file
     """    
@@ -27,6 +43,13 @@ def read_pickle(path):
     return obj
 
 
+def get_index(value,value_list):
+    if isinstance(value,int):
+        return value
+    else:
+        return value_list.index(value)
+
+
 #
 # OUTPUT
 #
@@ -34,15 +57,30 @@ def print_line(char='-',length=75):
     print(char*length)
 
 
+
 #
 # PyTorch
 #
+def to_numpy(tensor):
+    if torch.is_tensor(tensor):
+        tensor=tensor.cpu().detach().numpy()
+    return tensor
+
+
 def to_tensor(v):
     if isinstance(v,list):
         v=torch.tensor(v)
     elif isinstance(v,np.ndarray):
         v=torch.from_numpy(v)
     return v
+
+
+def argmax(tsr_arr,dim=0):
+    if torch.is_tensor(tsr_arr):
+        tsr_arr=torch.argmax(tsr_arr,dim=dim)
+    else:
+        tsr_arr=np.argmax(tsr_arr,axis=dim)
+    return tsr_arr
 
 
 def get_device(force_cpu=False):
