@@ -13,7 +13,7 @@ RECALL='recall'
 ACCURACY='accuracy'
 ACC_IMPORTANCE_TMPL='{}'
 PR_IMPORTANCE_TMPL='{}_{}'
-EPS=1e-9
+EPS=1e-8
 
 class BandImportance(object):
     """
@@ -49,14 +49,18 @@ class BandImportance(object):
         self.device=device
 
 
-    def run(self,max_processes=MAX_PROCESSES):
+    def run(self,max_processes=MAX_PROCESSES,multiprocess=True):
         """
         """
         start,ts_start=h.get_time()
         count=len(self.dataset)
         print("BandImportance.run [{}]:".format(ts_start))
         print("\tinput_count: {}".format(count))
-        out=mproc.map_with_threadpool(
+        if multiprocess:
+            run_loop=mproc.map_with_threadpool
+        else:
+            run_loop=mproc.map_sequential
+        out=run_loop(
             self._process_prediction,
             range(count),
             max_processes=max_processes)
@@ -82,13 +86,13 @@ class BandImportance(object):
                 inpt=inpt.to(self.device)
                 targ=targ.to(self.device)
         measures=self._measures(inpt,targ)
+        row+=measures.tolist()
         for b in range(self.nb_bands):
             rinpt=self._randomize_band(inpt,b)
             rmeasures=self._measures(inpt,targ)
-            b_importances=(measures-rmeasures)/measures+EPS
+            b_importances=(measures-rmeasures)/(measures+EPS)
             row+=b_importances.tolist()
-        row=np.where(np.array(row)<0,0,row)
-        return row
+        return self._clean_row(row)
 
 
     def _process_output(self,out):
@@ -139,11 +143,18 @@ class BandImportance(object):
 
     def _importance_columns(self):
         if self.measure==ACCURACY:
-            return [ ACC_IMPORTANCE_TMPL.format(b) for b in self.bands ]
+            return ['accuracy']+[ ACC_IMPORTANCE_TMPL.format(b) for b in self.bands ]
         else:
-            cols=[]
+            cols=[ f'{c}_{self.measure}' for c in self.categories ]
             for b in self.bands:
                 for c in self.categories:
                     cols.append( PR_IMPORTANCE_TMPL.format(b,c) )
             return cols
+
+
+    def _clean_row(self,row):
+        return np.where(
+                np.isnan(row),
+                np.nan,
+                np.where(np.array(row)<0,0,row))
 

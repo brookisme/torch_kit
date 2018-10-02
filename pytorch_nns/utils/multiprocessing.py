@@ -53,6 +53,10 @@ def simple(target,args_list,join=True):
 
 
 def map_sequential(target,args_list,print_args=False,noisy=False,**dummy_kwargs):
+  """ sequential replacement for map_with_pool/threadpool
+  * does not implement multiprocessing
+  * use for development/debugging/benchmarking
+  """
   if noisy:
     print('multiprocessing(test):')
   out=[]
