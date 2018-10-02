@@ -16,21 +16,47 @@ class ResBlock(nn.Module):
         TODO: GOT IDEA FROM FASTAI SOMEWHERE
 
     """
-    def __init__(self,layers,multiplier=0.5,crop=None):
+    def __init__(self,
+            layers,
+            multiplier=0.5,
+            crop=False,
+            in_ch=None,
+            out_ch=None):
         super(ResBlock, self).__init__()
         self.layers=nn.Sequential(*layers)
         self.multiplier=multiplier
         self.crop=crop
+        self.in_ch=in_ch
+        self.out_ch=out_ch
     
 
     def forward(self, x):
-        return (self.multiplier*self._crop(x)) + self.layers(x)
+        layers_out=self.layers(x)
+        if self.crop:
+            x=self._crop(x,layers_out)
+        if not (self.in_ch and self.out_ch):
+            self.in_ch=x.size()[1]
+            self.out_ch=layers_out.size()[1]
+        if self.in_ch!=self.out_ch:        
+            x=nn.Conv2d(
+                        in_channels=self.in_ch,
+                        out_channels=self.out_ch,
+                        kernel_size=1)
+        return (self.multiplier*x) + layers_out 
 
 
-    def _crop(self,x):
-        if self.crop>0:
-            x=x[:,:,self.crop:-self.crop,self.crop:-self.crop]
-        return x
+    def _crop(self,x,layers_out):
+        if not isinstance(self.crop,int):
+            # get cropping
+            layers_out_shape=layers_out.size()
+            x_shape=x.size()
+            out_size=layers_out_shape[-1]
+            x_size=x_shape[-1]
+            self.crop=(x_size-out_size)//2
+            # set in/out channels for future use
+            self.out_ch=layers_out_shape[1]
+            self.in_ch=x_shape[1]
+        return x[:,:,self.crop:-self.crop,self.crop:-self.crop]
 
 
 
