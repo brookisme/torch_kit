@@ -52,12 +52,17 @@ def simple(target,args_list,join=True):
   return procs
 
 
-def target_test(target,args_list,print_args=False):
-  print('multiprocessing(test):')
+def map_sequential(target,args_list,print_args=False,noisy=False,**dummy_kwargs):
+  if noisy:
+    print('multiprocessing(test):')
+  out=[]
   for i,args in enumerate(args_list):
-      print('\t{}...'.format(i))
+      if noisy: 
+        print('\t{}...'.format(i))
       if print_args:
         print('\t{}'.format(args))
-      target(args)
-  print('-'*25)
+      out.append(target(args))
+  if noisy: 
+    print('-'*25)
+  return out
 
