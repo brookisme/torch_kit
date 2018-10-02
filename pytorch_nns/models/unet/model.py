@@ -14,7 +14,8 @@ class UNet(nn.Module):
     Note: currently designed for square (H=W) inputs only 
 
     Args:
-        network_depth (int <2>): Depth of Network 'U'
+        network_depth (int <2>): Depth of Network 'U' 
+        kernel_sizes (list <None>): Overides network depth and kernel size
         conv_depth (int <2>): The number of convolutional layers 
         in_ch (int): Number of channels in input
         in_size (int): Size (=H=W) of input
@@ -37,11 +38,13 @@ class UNet(nn.Module):
     """
     def __init__(self,
             network_depth=4,
+            kernel_sizes=None,
             conv_depth=2,
             in_size=572,
             in_ch=1,
             out_ch=2,
             init_ch=64,
+            kernel_size=3,
             padding=0,
             bn=False,
             se=True):
@@ -50,12 +53,14 @@ class UNet(nn.Module):
         self.conv_depth=conv_depth
         self.out_ch=out_ch
         self.padding=padding
+        self.kernel_sizes=kernel_sizes or [kernel_size]*network_depth
         self.input_conv=ConvBlock(
             in_ch=in_ch,
             in_size=in_size,
             out_ch=init_ch,
-            depth=self.conv_depth,
+            kernel_size=kernel_size,
             padding=padding,
+            depth=self.conv_depth,
             bn=False,
             se=False)
         down_layers=self._down_layers(
@@ -89,11 +94,12 @@ class UNet(nn.Module):
     #
     def _down_layers(self,in_ch,in_size,bn,se):
         layers=[]
-        for index in range(1,self.network_depth+1):
+        for kernel_size in self.kernel_sizes:
             layer=blocks.Down(
                 in_ch,
                 in_size,
                 depth=self.conv_depth,
+                kernel_size=kernel_size,
                 padding=self.padding,
                 bn=bn,
                 se=se)
@@ -110,7 +116,8 @@ class UNet(nn.Module):
         in_ch=first.out_ch
         in_size=first.out_size
         layers=[]
-        for down_layer in down_layers:       
+        up_ks=self.kernel_sizes[::-1]
+        for down_layer,kernel_size in zip(down_layers,up_ks):
             crop=blocks.Up.cropping(down_layer.out_size,2*in_size)
             layer=blocks.Up(
                 in_ch,
@@ -118,6 +125,7 @@ class UNet(nn.Module):
                 depth=self.conv_depth,
                 crop=crop,
                 padding=self.padding,
+                kernel_size=kernel_size,
                 bn=bn,
                 se=se)
             in_ch=layer.out_ch

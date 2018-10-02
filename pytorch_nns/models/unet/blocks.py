@@ -34,13 +34,17 @@ class Down(nn.Module):
             out_ch=None,
             depth=2,
             padding=0,
+            kernel_size=3,
             bn=False,
             se=True,
             act=None,
             act_kwargs={}):
         super(Down, self).__init__()
+        same_padding=blocks.Conv.same_padding(kernel_size)
+        if padding==blocks.Conv.SAME:
+            padding=same_padding
         self.in_size=in_size
-        self.out_size=(in_size//2)-2*depth*(1-padding)
+        self.out_size=(in_size//2)-2*depth*(same_padding-padding)
         self.out_ch=out_ch or 2*in_ch
         self.down=nn.MaxPool2d(kernel_size=2)
         if se:
@@ -52,6 +56,7 @@ class Down(nn.Module):
             out_ch=self.out_ch,
             in_size=in_size//2,
             depth=depth,
+            kernel_size=kernel_size,
             padding=padding,
             bn=bn,
             act=act,
@@ -64,6 +69,8 @@ class Down(nn.Module):
         if self.se:
             x=self.se(x)
         return x
+
+
 
 
 class Up(nn.Module):
@@ -115,14 +122,18 @@ class Up(nn.Module):
             bilinear=False,
             crop=None,
             padding=0,
+            kernel_size=3,
             bn=False,
             se=True,
             act=None,
             act_kwargs={}):
         super(Up, self).__init__()
+        same_padding=blocks.Conv.same_padding(kernel_size)
+        if padding==blocks.Conv.SAME:
+            padding=same_padding
         self.crop=crop
         self.padding=padding
-        self.out_size=(in_size*2)-depth*(1-padding)*2
+        self.out_size=(in_size*2)-depth*(same_padding-padding)*2
         self.out_ch=out_ch or in_ch//2
         if bilinear:
             self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
@@ -134,6 +145,7 @@ class Up(nn.Module):
             out_ch=self.out_ch,
             depth=depth,
             padding=padding,
+            kernel_size=kernel_size,
             bn=bn,
             act=act,
             act_kwargs=act_kwargs)

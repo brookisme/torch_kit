@@ -77,9 +77,9 @@ class Conv(nn.Module):
         in_size (int): Size (=H=W) of input
         out_ch (int <None>): Number of channels in output (if None => in_ch)
         depth (int <2>): The number of convolutional layers 
-        kernel_size (int <3>): Kernal Size
+        kernel_size (int <3>): Kernel Size
         stride (int <1>): Stride
-        padding (int <0>): Padding
+        padding (int|str <0>): int or same if padding='same' -> int((kernel_size-1)/2) 
         in_block_relu (bool <True>): apply relu after conv layer in block
         bn (bool <True>): Add batch norm layer
         se (bool <True>): Add Squeeze and Excitation Block
@@ -91,6 +91,25 @@ class Conv(nn.Module):
         out_size <int>: Size (=H=W) of input
 
     """
+    #
+    # CONSTANTS
+    #
+    SAME='same'
+
+
+    #
+    # STATIC METHODS
+    #
+    @staticmethod
+    def same_padding(kernel_size):
+        r""" calculates same padding size
+        """
+        return (kernel_size-1)//2
+
+
+    #
+    # PUBLIC METHODS
+    #
     def __init__(self,
             in_ch,
             in_size,
@@ -105,6 +124,8 @@ class Conv(nn.Module):
             act=None,
             act_kwargs={}):
         super(Conv, self).__init__()
+        if padding==Conv.SAME:
+            padding=Conv.same_padding(kernel_size)
         self.out_ch=out_ch or 2*in_ch
         self._set_post_processes(self.out_ch,bn,se,act,act_kwargs)
         self._set_conv_layers(
@@ -127,7 +148,10 @@ class Conv(nn.Module):
             x=self.se(x)
         return x
 
-    
+
+    #
+    # INTERNAL METHODS
+    #    
     def _set_post_processes(self,out_channels,bn,se,act,act_kwargs):
         if bn:
             self.bn=nn.BatchNorm2d(out_channels)
