@@ -18,6 +18,8 @@ class Down(nn.Module):
         out_ch (int <None>): Number of channels in output (if None => in_ch)
         depth (int <2>): The number of convolutional layers 
         padding (int <0>): Padding. Use 0 or 1 since the kernal size is fixed at 3x3
+        res (bool <True>): ConvBlock -> ResBlock(ConvBlock)
+        res_multiplier (float <blocks.RES_MULTIPLIER>)
         bn (bool <True>): Add batch norm layer after Conv Block
         se (bool <True>): Add Squeeze and Excitation Block after Max Pool
         act (str <'relu'>): Method name of activation function after Conv Block
@@ -35,42 +37,40 @@ class Down(nn.Module):
             depth=2,
             padding=0,
             kernel_size=3,
+            res=False,
+            res_multiplier=blocks.RES_MULTIPLIER,
             bn=False,
             se=True,
-            act=None,
+            act='ReLU',
             act_kwargs={}):
         super(Down, self).__init__()
         same_padding=blocks.Conv.same_padding(kernel_size)
         if padding==blocks.Conv.SAME:
             padding=same_padding
         self.in_size=in_size
-        self.out_size=(in_size//2)-2*depth*(same_padding-padding)
+        conv_in_size=in_size//2
+        cropping=depth*(same_padding-padding)
         self.out_ch=out_ch or 2*in_ch
         self.down=nn.MaxPool2d(kernel_size=2)
-        if se:
-            self.se=blocks.SqueezeExcitation(self.out_ch)
-        else:
-            self.se=False
         self.conv_block=blocks.Conv(
             in_ch=in_ch,
             out_ch=self.out_ch,
-            in_size=in_size//2,
+            in_size=conv_in_size,
             depth=depth,
             kernel_size=kernel_size,
             padding=padding,
+            res=res,
+            res_multiplier=res_multiplier,
             bn=bn,
+            se=se,
             act=act,
             act_kwargs=act_kwargs)
+        self.out_size=self.conv_block.out_size
 
         
     def forward(self, x):
         x=self.down(x)
-        x=self.conv_block(x)
-        if self.se:
-            x=self.se(x)
-        return x
-
-
+        return self.conv_block(x)
 
 
 class Up(nn.Module):
@@ -123,9 +123,11 @@ class Up(nn.Module):
             crop=None,
             padding=0,
             kernel_size=3,
+            res=False,
+            res_multiplier=blocks.RES_MULTIPLIER,
             bn=False,
             se=True,
-            act=None,
+            act='ReLU',
             act_kwargs={}):
         super(Up, self).__init__()
         same_padding=blocks.Conv.same_padding(kernel_size)
@@ -146,23 +148,19 @@ class Up(nn.Module):
             depth=depth,
             padding=padding,
             kernel_size=kernel_size,
+            res=res,
+            res_multiplier=res_multiplier,            
             bn=bn,
+            se=se,
             act=act,
             act_kwargs=act_kwargs)
-        if se:
-            self.se=blocks.SqueezeExcitation(self.out_ch)
-        else:
-            self.se=False
         
         
     def forward(self, x, skip):
         x = self.up(x)
         skip = self._crop(skip,x)
         x = torch.cat([skip, x], dim=1)
-        x = self.conv_block(x)
-        if self.se:
-            x=self.se(x)
-        return x
+        return self.conv_block(x)
 
     
     def _crop(self,skip,x):

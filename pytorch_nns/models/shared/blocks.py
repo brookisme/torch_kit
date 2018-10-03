@@ -2,60 +2,64 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-
-
+RES_MULTIPLIER=0.75
 class ResBlock(nn.Module):
     r""" ResBlock
 
     Args:
-        layers: pytorch layers
-        multiplier <float [0.5]>: ident multiplier
-        crop: <int> (in_size-out_size)/2
-        
+        block: block or list of layers
+        multiplier <float [RES_MULTIPLIER]>: ident multiplier
+        crop: <int|bool> 
+            if <int> cropping = crop
+            elif True calculate cropping
+            else no cropping
     Links:
         TODO: GOT IDEA FROM FASTAI SOMEWHERE
 
     """
     def __init__(self,
-            layers,
-            multiplier=0.5,
-            crop=False,
-            in_ch=None,
-            out_ch=None):
+            block,
+            in_ch,
+            out_ch,
+            multiplier=RES_MULTIPLIER,
+            crop=True):
         super(ResBlock, self).__init__()
-        self.layers=nn.Sequential(*layers)
-        self.multiplier=multiplier
-        self.crop=crop
+        self.block=self._process_block(block)
         self.in_ch=in_ch
         self.out_ch=out_ch
-    
-
-    def forward(self, x):
-        layers_out=self.layers(x)
-        if self.crop:
-            x=self._crop(x,layers_out)
-        if not (self.in_ch and self.out_ch):
-            self.in_ch=x.size()[1]
-            self.out_ch=layers_out.size()[1]
+        self.multiplier=multiplier
+        self.crop=crop
         if self.in_ch!=self.out_ch:        
-            x=nn.Conv2d(
+            self.ident_conv=nn.Conv2d(
                         in_channels=self.in_ch,
                         out_channels=self.out_ch,
                         kernel_size=1)
-        return (self.multiplier*x) + layers_out 
+        else:
+            self.ident_conv=False
+
+    
+    def forward(self, x):
+        block_out=self.block(x)
+        if self.crop:
+            x=self._crop(x,block_out)
+        if self.ident_conv:
+            x=self.ident_conv(x)
+        return (self.multiplier*x) + block_out 
+
+
+    def _process_block(self,block):
+        if isinstance(block,list):
+            return nn.Sequential(*block)
+        else:
+            return block
 
 
     def _crop(self,x,layers_out):
         if not isinstance(self.crop,int):
             # get cropping
-            layers_out_shape=layers_out.size()
-            x_shape=x.size()
-            out_size=layers_out_shape[-1]
-            x_size=x_shape[-1]
+            out_size=layers_out.size()[-1]
+            x_size=x.size()[-1]
             self.crop=(x_size-out_size)//2
-            # set in/out channels for future use
-            self.out_ch=layers_out_shape[1]
-            self.in_ch=x_shape[1]
         return x[:,:,self.crop:-self.crop,self.crop:-self.crop]
 
 
@@ -71,21 +75,28 @@ class SqueezeExcitation(nn.Module):
         https://arxiv.org/abs/1709.01507
 
     """
-    def __init__(self, nb_ch, reduction=16):
+    def __init__(self, nb_ch, reduction=16, warn=True):
         super(SqueezeExcitation, self).__init__()
         self.nb_ch=nb_ch
         self.avg_pool=nn.AdaptiveAvgPool2d(1)
-        self.fc=nn.Sequential(
-                nn.Linear(nb_ch, nb_ch // reduction),
-                nn.ReLU(inplace=True),
-                nn.Linear(nb_ch // reduction, nb_ch),
-                nn.Sigmoid())
+        self.reduction_ch=nb_ch//reduction
+        if self.reduction_ch:
+            self.fc=nn.Sequential(
+                    nn.Linear(nb_ch,self.reduction_ch),
+                    nn.ReLU(inplace=True),
+                    nn.Linear(self.reduction_ch, nb_ch),
+                    nn.Sigmoid())
+        elif warn:
+            print('[WARNING] SqueezeExcitation skipped. nb_ch < reduction')
 
         
     def forward(self, x):
-        y = self.avg_pool(x).view(-1,self.nb_ch)
-        y = self.fc(y).view(-1,self.nb_ch,1,1)
-        return x * y
+        if self.reduction_ch:
+            y = self.avg_pool(x).view(-1,self.nb_ch)
+            y = self.fc(y).view(-1,self.nb_ch,1,1)
+            return x * y
+        else:
+            return x
 
 
 
@@ -106,11 +117,12 @@ class Conv(nn.Module):
         kernel_size (int <3>): Kernel Size
         stride (int <1>): Stride
         padding (int|str <0>): int or same if padding='same' -> int((kernel_size-1)/2) 
-        in_block_relu (bool <True>): apply relu after conv layer in block
+        res (bool <True>): ConvBlock -> ResBlock(ConvBlock)
+        res_multiplier (float <RES_MULTIPLIER>)
         bn (bool <True>): Add batch norm layer
         se (bool <True>): Add Squeeze and Excitation Block
-        act (str <'relu'>): Method name of activation function for output of block
-        act_kwargs (dict <{}>): Kwargs for activation function for output of block
+        act (str <'relu'>): Method name of activation function after each Conv Layer
+        act_kwargs (dict <{}>): Kwargs for activation function after each Conv Layer
         
     Properties:
         out_ch <int>: Number of channels of the output
@@ -145,31 +157,39 @@ class Conv(nn.Module):
             stride=1, 
             padding=0, 
             in_block_relu=True,
+            res=False,
+            res_multiplier=RES_MULTIPLIER,
             bn=False,
             se=False,
-            act=None,
+            act='ReLU',
             act_kwargs={}):
         super(Conv, self).__init__()
+        same_padding=Conv.same_padding(kernel_size)
         if padding==Conv.SAME:
-            padding=Conv.same_padding(kernel_size)
+            padding=same_padding
+            self.cropping=False
+            self.out_size=in_size
+        else:
+            self.cropping=depth*(same_padding-padding)
+            self.out_size=in_size-2*self.cropping
+        self.in_ch=in_ch
         self.out_ch=out_ch or 2*in_ch
-        self._set_post_processes(self.out_ch,bn,se,act,act_kwargs)
         self._set_conv_layers(
             depth,
-            in_ch,
             kernel_size,
             stride,
             padding,
-            in_block_relu)
-        self.out_size=in_size-depth*2*((kernel_size-1)/2-padding)
+            res,
+            res_multiplier,
+            act,
+            act_kwargs)
+        self._set_processes_layers(bn,se,act,act_kwargs)
 
         
     def forward(self, x):
         x=self.conv_layers(x)
         if self.bn:
             x=self.bn(x)
-        if self.act:
-            x=self._activation(x)
         if self.se:
             x=self.se(x)
         return x
@@ -178,30 +198,20 @@ class Conv(nn.Module):
     #
     # INTERNAL METHODS
     #    
-    def _set_post_processes(self,out_channels,bn,se,act,act_kwargs):
-        if bn:
-            self.bn=nn.BatchNorm2d(out_channels)
-        else:
-            self.bn=False
-        if se:
-            self.se=SqueezeExcitation(out_channels)
-        else:
-            self.se=False
-        self.act=act
-        self.act_kwargs=act_kwargs
-
-        
-    def _set_conv_layers(
-            self,
+    def _set_conv_layers(self,
             depth,
-            in_ch,
             kernel_size,
             stride,
             padding,
-            in_block_relu):
+            res,
+            res_multiplier,
+            act,
+            act_kwargs):
         layers=[]
         for index in range(depth):
-            if index!=0:
+            if index==0:
+                in_ch=self.in_ch
+            else:
                 in_ch=self.out_ch
             layers.append(
                 nn.Conv2d(
@@ -210,10 +220,34 @@ class Conv(nn.Module):
                     kernel_size=kernel_size,
                     stride=stride,
                     padding=padding))
-            if in_block_relu:
-                layers.append(nn.ReLU())
-        self.conv_layers=nn.Sequential(*layers)
+            if act:
+                layers.append(self._act_layer(act)(**act_kwargs))
+        if res:
+            self.conv_layers=ResBlock(
+                layers,
+                multiplier=res_multiplier,
+                crop=self.cropping,
+                in_ch=self.in_ch,
+                out_ch=self.out_ch)
+        else:
+            self.conv_layers=nn.Sequential(*layers)
+
+
+    def _set_processes_layers(self,bn,se,act,act_kwargs):
+        if bn:
+            self.bn=nn.BatchNorm2d(self.out_ch)
+        else:
+            self.bn=False
+        if se:
+            self.se=SqueezeExcitation(self.out_ch)
+        else:
+            self.se=False
 
         
-    def _activation(self,x):
-        return getattr(F,self.act,**self.act_kwargs)(x)
+    def _act_layer(self,act):
+        if isinstance(act,str):
+            return getattr(nn,act)
+        else:
+            return act
+
+

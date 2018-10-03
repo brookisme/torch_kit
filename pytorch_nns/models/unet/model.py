@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
-from pytorch_nns.models.shared.blocks import Conv as ConvBlock
+from pytorch_nns.models.shared.blocks import Conv as ConvBlock, RES_MULTIPLIER
 import pytorch_nns.models.unet.blocks as blocks
 
 
@@ -20,7 +20,8 @@ class UNet(nn.Module):
         in_ch (int): Number of channels in input
         in_size (int): Size (=H=W) of input
         out_ch (int <None>): Number of channels in output (if None => in_ch)
-        init_ch (int <None>): Number of channels added in first convolution
+        input_out_ch (int <None>): Number of out channels in first conv_block
+        output_in_ch (int <None>): Number of in channels in last conv_block
         padding (int <0>): Padding
         bn (bool <True>): Add batch norm layer
         se (bool <True>): Add Squeeze and Excitation Block
@@ -43,11 +44,16 @@ class UNet(nn.Module):
             in_size=572,
             in_ch=1,
             out_ch=2,
-            init_ch=64,
-            kernel_size=3,
+            input_out_ch=64,
+            output_in_ch=64,
             padding=0,
+            kernel_size=3,
+            res=False,
+            res_multiplier=RES_MULTIPLIER,            
             bn=False,
-            se=True):
+            se=True,
+            act='ReLU',
+            act_kwargs={}):
         super(UNet, self).__init__()
         self.network_depth=network_depth
         self.conv_depth=conv_depth
@@ -57,22 +63,37 @@ class UNet(nn.Module):
         self.input_conv=ConvBlock(
             in_ch=in_ch,
             in_size=in_size,
-            out_ch=init_ch,
-            kernel_size=kernel_size,
+            out_ch=input_out_ch,
             padding=padding,
+            kernel_size=kernel_size,
             depth=self.conv_depth,
+            res=res,
+            res_multiplier=res_multiplier,
             bn=False,
-            se=False)
+            se=False,
+            act=act,
+            act_kwargs=act_kwargs)
         down_layers=self._down_layers(
             self.input_conv.out_ch,
             self.input_conv.out_size,
+            res=res,
+            res_multiplier=res_multiplier,
             bn=bn,
-            se=se)
+            se=se,
+            act=act,
+            act_kwargs=act_kwargs)
         self.down_blocks=nn.ModuleList(down_layers)
-        up_layers=self._up_layers(down_layers,bn=bn,se=se)
+        up_layers=self._up_layers(
+            down_layers,
+            res=res,
+            res_multiplier=res_multiplier,
+            bn=bn,
+            se=se,
+            act=act,
+            act_kwargs=act_kwargs)
         self.up_blocks=nn.ModuleList(up_layers)
         self.out_size=self.up_blocks[-1].out_size
-        self.output_conv=self._output_layer(out_ch)
+        self.output_conv=self._output_layer(output_in_ch,out_ch)
 
         
     def forward(self, x):
@@ -92,24 +113,44 @@ class UNet(nn.Module):
     #
     # Internal Methods
     #
-    def _down_layers(self,in_ch,in_size,bn,se):
+    def _down_layers(self,
+            in_ch,
+            in_size,
+            res,
+            res_multiplier,
+            bn,
+            se,
+            act,
+            act_kwargs):
         layers=[]
         for kernel_size in self.kernel_sizes:
             layer=blocks.Down(
                 in_ch,
                 in_size,
                 depth=self.conv_depth,
-                kernel_size=kernel_size,
                 padding=self.padding,
+                kernel_size=kernel_size,
+                res=res,
+                res_multiplier=res_multiplier,
                 bn=bn,
-                se=se)
+                se=se,
+                act=act,
+                act_kwargs=act_kwargs)
             in_ch=layer.out_ch
             in_size=layer.out_size
             layers.append(layer)
         return layers
 
         
-    def _up_layers(self,down_layers,bn,se):
+    def _up_layers(
+            self,
+            down_layers,
+            res,
+            res_multiplier,
+            bn,
+            se,
+            act,
+            act_kwargs):
         down_layers=down_layers[::-1]
         down_layers.append(self.input_conv)
         first=down_layers.pop(0)
@@ -126,17 +167,21 @@ class UNet(nn.Module):
                 crop=crop,
                 padding=self.padding,
                 kernel_size=kernel_size,
+                res=res,
+                res_multiplier=res_multiplier,
                 bn=bn,
-                se=se)
+                se=se,
+                act=act,
+                act_kwargs=act_kwargs)
             in_ch=layer.out_ch
             in_size=layer.out_size
             layers.append(layer)
         return layers
 
     
-    def _output_layer(self,out_ch):
+    def _output_layer(self,in_ch,out_ch):
         return nn.Conv2d(
-           in_channels=64,
+           in_channels=in_ch,
            out_channels=out_ch,
            kernel_size=1,
            stride=1,
