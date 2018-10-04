@@ -23,6 +23,11 @@ class UNet(nn.Module):
         input_out_ch (int <None>): Number of out channels in first conv_block
         output_in_ch (int <None>): Number of in channels in last conv_block
         padding (int <0>): Padding
+        res (bool <False>): ConvBlock -> ResBlock(ConvBlock)
+        res_up (bool|None <False>): 
+            ConvBlock -> ResBlock(ConvBlock) for Up path
+            if None = res
+        res_multiplier (float <blocks.RES_MULTIPLIER>)
         bn (bool <True>): Add batch norm layer
         se (bool <True>): Add Squeeze and Excitation Block
         act (str <'relu'>): Method name of activation function
@@ -49,6 +54,7 @@ class UNet(nn.Module):
             padding=0,
             kernel_size=3,
             res=False,
+            res_up=None,
             res_multiplier=RES_MULTIPLIER,            
             bn=False,
             se=True,
@@ -83,9 +89,11 @@ class UNet(nn.Module):
             act=act,
             act_kwargs=act_kwargs)
         self.down_blocks=nn.ModuleList(down_layers)
+        if res_up is None:
+            res_up=res
         up_layers=self._up_layers(
             down_layers,
-            res=res,
+            res=res_up,
             res_multiplier=res_multiplier,
             bn=bn,
             se=se,

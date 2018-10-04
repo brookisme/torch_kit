@@ -91,6 +91,8 @@ class Up(nn.Module):
             If padding is 0: cropping for skip connection.  If None the cropping will be
             calculated.  Note: both input-size minus skip-size must be even. 
         padding (int <0>): Padding. Use 0 or 1 since the kernal size is fixed at 3x3
+        res (bool <True>): ConvBlock -> ResBlock(ConvBlock)
+        res_multiplier (float <blocks.RES_MULTIPLIER>)
         bn (bool <True>): Add batch norm layer after Conv Block
         se (bool <True>): Add Squeeze and Excitation Block after Conv Block
         act (str <'relu'>): Method name of activation function after Conv Block
