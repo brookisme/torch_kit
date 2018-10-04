@@ -58,6 +58,7 @@ class UNet(nn.Module):
             res_multiplier=RES_MULTIPLIER,            
             bn=False,
             se=True,
+            se_up=None,
             act='ReLU',
             act_kwargs={}):
         super(UNet, self).__init__()
@@ -91,12 +92,14 @@ class UNet(nn.Module):
         self.down_blocks=nn.ModuleList(down_layers)
         if res_up is None:
             res_up=res
+        if se_up is None:
+            se_up=se
         up_layers=self._up_layers(
             down_layers,
             res=res_up,
             res_multiplier=res_multiplier,
             bn=bn,
-            se=se,
+            se=se_up,
             act=act,
             act_kwargs=act_kwargs)
         self.up_blocks=nn.ModuleList(up_layers)
