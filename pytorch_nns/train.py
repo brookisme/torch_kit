@@ -117,6 +117,7 @@ class Trainer(object):
             save_last=False,
             early_stopping=False,
             patience=0,
+            patience_start=0,
             initial_loss=9e12):
         # initialize training
         self.best_loss=initial_loss
@@ -131,6 +132,7 @@ class Trainer(object):
         self.nb_epochs=nb_epochs
         self.early_stopping=early_stopping
         self.patience=patience
+        self.patience_start=patience_start
         self.nb_increased_losses=0
         # train
         h.print_line("=")
@@ -247,7 +249,8 @@ class Trainer(object):
                         noisy=False)
                 self.nb_increased_losses=0
             else:
-                self.nb_increased_losses+=1
+                if epoch>=self.patience_start:
+                    self.nb_increased_losses+=1
             if self.save_frequency:
                 if (epoch%self.save_frequency is 0) or (epoch==(self.nb_epochs-1)):
                     self.weights_path=self.save_weights(
