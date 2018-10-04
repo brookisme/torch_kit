@@ -138,6 +138,56 @@ def normalized_difference(image,band_1,band_2,axes=BANDS_FIRST_AXES):
     return np.divide(band_1-band_2,band_1+band_2+EPS)
 
 
+
+""" Linear Combination
+
+    Args:
+        bands <list|int>: list of band indices or band index
+        coefs <list|int|None>: list of coefs, a coef for all bands, or None -> 1
+
+    Returns:
+        <image>: image_bands dot coefs
+"""
+def linear_combo(image,bands,coefs=None,axes=BANDS_FIRST_AXES):
+    if isinstance(bands,int):
+        bands=[bands]
+    if not coefs:
+        coefs=1
+    if isinstance(coefs,int):
+        coefs=[coefs]*len(bands)
+    if is_bands_first(axes):
+        image=coefs[0]*image[bands[0]]
+        for c,b in zip(coefs[1:],bands[1:]):
+            image+=c*image[b]
+    else:
+        image=coefs[0]*image[:,:,bands[0]]
+        for c,b in zip(coefs[1:],bands[1:]):
+            image+=c*image[:,:,b]
+    return image
+
+
+
+""" Ratio Index
+    
+    Generalized Index that allows for any linear combination of bands
+    in numerator and denominator.
+
+"""
+def ratio_index(
+        image,
+        numerator_bands,
+        denominator_bands=None,
+        numerator_coefs=None,
+        denominator_coefs=None):
+    numerator=linear_combo(image,numerator_bands,numerator_coefs)
+    if denominator_bands is None:
+        denominator=1
+    else:  
+        denominator=linear_combo(image,denominator_bands,denominator_coefs)
+    return np.divide(numerator,denominator+EPS)
+
+
+
 """ Calibrate Image
 """
 def calibrate(image,means=None,stdevs=None,bands=None,axes=BANDS_FIRST_AXES):
@@ -209,6 +259,23 @@ class GTiffLoader(object):
         ndiff_band=normalized_difference(self.image,band_1,band_2)
         ndiff_band=np.expand_dims(ndiff_band,axis=0)
         self.image=np.concatenate((self.image,ndiff_band))
+
+
+    """ Add Ratio Index Band
+    """
+    def ratio_index(self,
+            numerator_bands,
+            denominator_bands=None,
+            numerator_coefs=None,
+            denominator_coefs=None):
+        ratio_index_band=ratio_index(
+            self.image,
+            numerator_bands=numerator_bands,
+            denominator_bands=denominator_bands,
+            numerator_coefs=numerator_coefs,
+            denominator_coefs=denominator_coefs)
+        ratio_index_band=np.expand_dims(ratio_index_band,axis=0)
+        self.image=np.concatenate((self.image,ratio_index_band))
 
 
     """ Rotate/Flip Image
