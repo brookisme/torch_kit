@@ -144,11 +144,11 @@ def normalized_difference(image,band_1,band_2,axes=BANDS_FIRST_AXES):
     Args:
         bands <list|int>: list of band indices or band index
         coefs <list|int|None>: list of coefs, a coef for all bands, or None -> 1
-
+        constant <float[0]>: additive constant
     Returns:
         <image>: image_bands dot coefs
 """
-def linear_combo(image,bands,coefs=None,axes=BANDS_FIRST_AXES):
+def linear_combo(image,bands,coefs=None,constant=0,axes=BANDS_FIRST_AXES):
     if isinstance(bands,int):
         bands=[bands]
     if not coefs:
@@ -163,8 +163,7 @@ def linear_combo(image,bands,coefs=None,axes=BANDS_FIRST_AXES):
         image=coefs[0]*image[:,:,bands[0]]
         for c,b in zip(coefs[1:],bands[1:]):
             image+=c*image[:,:,b]
-    return image
-
+    return image+constant
 
 
 """ Ratio Index
@@ -178,12 +177,22 @@ def ratio_index(
         numerator_bands,
         denominator_bands=None,
         numerator_coefs=None,
-        denominator_coefs=None):
-    numerator=linear_combo(image,numerator_bands,numerator_coefs)
+        denominator_coefs=None,
+        numerator_constant=0,
+        denominator_constant=0):
+    numerator=linear_combo(
+        image,
+        numerator_bands,
+        numerator_coefs,
+        numerator_constant)
     if denominator_bands is None:
         denominator=1
     else:  
-        denominator=linear_combo(image,denominator_bands,denominator_coefs)
+        denominator=linear_combo(
+            image,
+            denominator_bands,
+            denominator_coefs,
+            denominator_constant)
     return np.divide(numerator,denominator+EPS)
 
 
@@ -276,6 +285,16 @@ class GTiffLoader(object):
             denominator_coefs=denominator_coefs)
         ratio_index_band=np.expand_dims(ratio_index_band,axis=0)
         self.image=np.concatenate((self.image,ratio_index_band))
+
+
+    """ Calibrate Image
+    """
+    def calibrate(self,means=None,stdevs=None,bands=None):
+        self.image=calibrate(
+            self.image,
+            means=means,
+            stdevs=stdevs,
+            bands=bands)
 
 
     """ Rotate/Flip Image
