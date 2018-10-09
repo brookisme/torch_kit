@@ -148,7 +148,9 @@ def normalized_difference(image,band_1,band_2,axes=BANDS_FIRST_AXES):
     Returns:
         <image>: image_bands dot coefs
 """
-def linear_combo(image,bands,coefs=None,constant=0,axes=BANDS_FIRST_AXES):
+def linear_combo(image,bands,coefs=None,constant=None,axes=BANDS_FIRST_AXES):
+    if not constant:
+        constant=0
     if isinstance(bands,int):
         bands=[bands]
     if not coefs:
@@ -179,21 +181,24 @@ def ratio_index(
         numerator_coefs=None,
         denominator_coefs=None,
         numerator_constant=0,
-        denominator_constant=0):
+        denominator_constant=0,
+        constant=0):
+    if not constant:
+        constant=0
     numerator=linear_combo(
         image,
-        numerator_bands,
-        numerator_coefs,
-        numerator_constant)
+        bands=numerator_bands,
+        coefs=numerator_coefs,
+        constant=numerator_constant)
     if denominator_bands is None:
         denominator=1
     else:  
         denominator=linear_combo(
             image,
-            denominator_bands,
-            denominator_coefs,
-            denominator_constant)
-    return np.divide(numerator,denominator+EPS)
+            bands=denominator_bands,
+            coefs=denominator_coefs,
+            constant=denominator_constant)
+    return np.divide(numerator,denominator+EPS)+constant
 
 
 
@@ -276,13 +281,19 @@ class GTiffLoader(object):
             numerator_bands,
             denominator_bands=None,
             numerator_coefs=None,
-            denominator_coefs=None):
+            denominator_coefs=None,
+            numerator_constant=None,
+            denominator_constant=None,
+            constant=None):
         ratio_index_band=ratio_index(
             self.image,
             numerator_bands=numerator_bands,
             denominator_bands=denominator_bands,
             numerator_coefs=numerator_coefs,
-            denominator_coefs=denominator_coefs)
+            denominator_coefs=denominator_coefs,
+            numerator_constant=numerator_constant,
+            denominator_constant=denominator_constant,
+            constant=constant)
         ratio_index_band=np.expand_dims(ratio_index_band,axis=0)
         self.image=np.concatenate((self.image,ratio_index_band))
 

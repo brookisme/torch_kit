@@ -17,7 +17,7 @@ ratio={
     'gcvi':{
         "numerator_bands":3,
         "denominator_bands":1,
-        "numerator_constant":1
+        "constant":1
     },
     'evi_modis':{
         "numerator_bands":[3,0],
