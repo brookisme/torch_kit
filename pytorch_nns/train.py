@@ -1,4 +1,5 @@
 import os.path
+import logging
 from datetime import datetime
 import torch.cuda
 import torch.optim as optim
@@ -20,7 +21,7 @@ WEIGHTS_NAME='weights'
 HISTORY='HISTORY'
 WEIGHTS='WEIGHTS'
 TS_FMT="%Y-%m-%dT%H:%M:%S"
-
+LINE_LENGTH=75
 
 #
 # HELPERS
@@ -118,7 +119,8 @@ class Trainer(object):
             early_stopping=False,
             patience=0,
             patience_start=0,
-            initial_loss=9e12):
+            initial_loss=9e12,
+            log=True):
         # initialize training
         self.best_loss=initial_loss
         self.best_epoch=-1
@@ -134,11 +136,12 @@ class Trainer(object):
         self.patience=patience
         self.patience_start=patience_start
         self.nb_increased_losses=0
+        self._set_logger(log)
         # train
-        h.print_line("=")
-        print("Trainer.fit:start_time: {}".format(
+        self._print("="*LINE_LENGTH)
+        self._print("Trainer.fit:start_time: {}".format(
             self.train_start_timestamp))
-        h.print_line()
+        self._print("-"*LINE_LENGTH)
         self.train_loader=train_loader
         self.valid_loader=valid_loader
         if valid_loader:
@@ -183,15 +186,17 @@ class Trainer(object):
                 timestamp=self.train_start_timestamp,
                 noisy=False)
             h.print_line()
-            print("Trainer.fit:weights:",self.weights_path)
-            print("Trainer.fit:best-epoch: {} ({})".format(self.best_epoch,self.best_loss))
+            self._print("-"*LINE_LENGTH)
+            self._print("Trainer.fit:weights: {}".format(self.weights_path))
+            self._print("Trainer.fit:best-epoch: {} ({})".format(self.best_epoch,self.best_loss))
         if self.save_best:
             h.print_line()
-            print("Trainer.fit:best-weights:",self.best_weights_path)
+            self._print("Trainer.fit:best-weights: {}".format(self.best_weights_path))
         h.print_line()
-        print("Trainer.fit:end_time: {}".format(
+        self._print("="*LINE_LENGTH)
+        self._print("Trainer.fit:end_time: {}".format(
             self.train_end_timestamp))
-        print("Trainer.fit:duration: {}".format(
+        self._print("Trainer.fit:duration: {}".format(
             str(self.train_end_time-self.train_start_time)))
         h.print_line("=")
 
@@ -267,7 +272,8 @@ class Trainer(object):
             train_mode=train_mode,
             loss=avg_loss,
             acc=avg_acc)
-        if print_epoch: print(out_row,flush=True)
+        if print_epoch: 
+            self._print(out_row,log=True)
 
 
     def _batch_data(self,batch):
@@ -353,6 +359,26 @@ class Trainer(object):
             return (epoch%self.noise_reducer is 0) or epoch==(self.nb_epochs-1)
         else:
             return True
+
+
+    def _set_logger(self,log):
+        if log:
+            if isinstance(log,str):
+                log_filename=log
+            else:
+                log_filename=f'train_{self.train_start_timestamp}.log'
+            self.logger=logging.getLogger(__name__)
+            self.logger.setLevel(logging.DEBUG)
+            file_handler=logging.FileHandler(log_filename)
+            self.logger.addHandler(file_handler)
+        else:
+            self.logger=False
+
+
+    def _print(self,msg,log=False,level='info'):
+        if self.logger:
+            getattr(self.logger,level)(msg)
+        print(msg)
 
 
     def _save_obj(self,
