@@ -188,7 +188,10 @@ class Trainer(object):
             h.print_line()
             self._print("-"*LINE_LENGTH)
             self._print("Trainer.fit:weights: {}".format(self.weights_path))
-            self._print("Trainer.fit:best-epoch: {} ({})".format(self.best_epoch,self.best_loss))
+            self._print("Trainer.fit:best-epoch: {} ({},{})".format(
+                self.best_epoch,
+                self.best_loss,
+                self.best_acc))
         if self.save_best:
             h.print_line()
             self._print("Trainer.fit:best-weights: {}".format(self.best_weights_path))
@@ -246,6 +249,7 @@ class Trainer(object):
         if self._check_loss(train_mode):
             if self.best_loss>avg_loss:
                 self.best_loss=avg_loss
+                self.best_acc=avg_acc
                 self.best_epoch=epoch
                 if self.save_best:
                     self.best_weights_path=self.save_weights(

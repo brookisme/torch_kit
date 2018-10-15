@@ -115,4 +115,20 @@ def get_model(
     return model
 
 
+def freeze_layer(layer):
+    for param in layer.parameters():
+        param.requires_grad=False
+        
 
+def freeze_layers(model,end=None,start=None):
+    layer_list=list(model.children())
+    for layer in layer_list[start:end]:
+        freeze_layer(layer)
+
+
+def trainable_params(model):
+    return filter(lambda p: p.requires_grad, model.parameters())
+
+
+def nb_trainable_params(model):
+    return sum([np.prod(p.size()) for p in trainable_params(model)])
