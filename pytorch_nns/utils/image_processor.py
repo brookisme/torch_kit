@@ -243,7 +243,18 @@ def augment(image,k=None,flip=None):
 
 
 class GTiffLoader(object):
-    """
+
+
+    @staticmethod
+    def augmentation(k=None,flip=None):
+        if k is None: 
+            k=np.random.choice(range(4))
+        if flip is None: 
+            flip=np.random.choice([True,False])
+        return k, flip
+
+
+    """ 
     """
     def __init__(self,path,cropping=None,bands=None):
         self.path=path
@@ -311,12 +322,7 @@ class GTiffLoader(object):
     """ Rotate/Flip Image
     """     
     def augment(self,k=None,flip=None):
-        if k is None: 
-            k=np.random.choice(range(4))
-        if flip is None: 
-            flip=np.random.choice([True,False])
-        self.k=k
-        self.flip=flip
+        self.k, self.flip=GTiffLoader.augmentation(k,flip)
         self.image=augment(self.image,k,flip)
 
 
