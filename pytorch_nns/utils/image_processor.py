@@ -1,6 +1,7 @@
 import warnings
 import numpy as np
 import rasterio as rio
+from rasterio.windows import Window
 #
 # CONFIG
 #
@@ -391,20 +392,20 @@ class GTiffLoader(object):
             size=image.shape[1]
             if self.cropping:
                 image=crop(image,self.cropping)
-                profile=self._crop_profile(src,size,profile)
+                out_size=image.shape[1]
+                win=Window(self.cropping,self.cropping,out_size,out_size)
+                transform=src.window_transform(win)
+                profile=self._crop_profile(profile,out_size,transform)
         if bands:
             image=image[bands]
         return image, profile
 
     
-    def _crop_profile(self,src,size,profile):
-        out_size=size-2*self.cropping
-        win=((self.cropping,self.cropping),(out_size,out_size))
+    def _crop_profile(self,profile,out_size,transform):
         profile=profile.copy()
-        profile.pop('transform',None)
         profile['width']=out_size
         profile['height']=out_size
-        profile['affine']=src.window_transform(win)
+        profile['transform']=transform
         return profile
 
 
