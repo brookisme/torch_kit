@@ -406,6 +406,11 @@ class GTiffLoader(object):
         profile['width']=out_size
         profile['height']=out_size
         profile['transform']=transform
+        if profile['blockxsize']>out_size:
+            n=int(np.log(out_size)/np.log(2))
+            blocksize=2**n
+            profile['blockxsize']=blocksize
+            profile['blockysize']=blocksize
         return profile
 
 

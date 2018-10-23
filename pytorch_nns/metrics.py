@@ -39,7 +39,7 @@ def precision(category_index,cmatrix=None,targ=None,pred=None,argmax=False,axis=
 
 
 def recall(category_index,cmatrix=None,targ=None,pred=None,argmax=False,axis=0):
-    if not cmatrix:
+    if cmatrix is None:
         cmatrix=confusion(targ,pred,argmax=argmax,axis=axis)
     tp_plus_fn=cmatrix[category_index].sum()
     if tp_plus_fn==0:
@@ -59,10 +59,14 @@ def fbeta(
         argmax=False,
         axis=0,
         return_precision_recall=False):
-    if not precision:
+    if precision is None:
         cmatrix=confusion(targ,pred,argmax=argmax,axis=axis)
-        precision=precision(category_index,cmatrix=cmatrix)
-        recall=recall(category_index,cmatrix=cmatrix)
+        precision=precision(
+            category_index=category_index,
+            cmatrix=cmatrix)
+        recall=recall(
+            category_index=category_index,
+            cmatrix=cmatrix)
     beta_sq=(beta**2)
     if (precision==0) and (recall==0):
         return 0.0
