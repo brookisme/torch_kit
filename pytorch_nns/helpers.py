@@ -75,11 +75,11 @@ def to_tensor(v):
     return v
 
 
-def argmax(tsr_arr,dim=0):
+def argmax(tsr_arr,axis=0):
     if torch.is_tensor(tsr_arr):
-        tsr_arr=torch.argmax(tsr_arr,dim=dim)
+        tsr_arr=torch.argmax(tsr_arr,dim=axis)
     else:
-        tsr_arr=np.argmax(tsr_arr,axis=dim)
+        tsr_arr=np.argmax(tsr_arr,axis=axis)
     return tsr_arr
 
 

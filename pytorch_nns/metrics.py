@@ -3,6 +3,7 @@ import numpy as np
 import pytorch_nns.helpers as h
 from sklearn.metrics import confusion_matrix
 
+DEFAULT_BETA=2
 
 def target_prediction_argmax(targ,pred,axis=0):
     return h.argmax(pred,axis=axis),h.argmax(targ,axis=axis)
@@ -11,7 +12,7 @@ def target_prediction_argmax(targ,pred,axis=0):
 def accuracy(pred,targ,argmax=True,axis=0):
     if argmax:
         targ,pred=target_prediction_argmax(targ,pred,axis=axis)
-    return (pred==targ).float().mean()
+    return (pred==targ).mean()
 
 
 def confusion(targ,pred,labels=None,nb_categories=None,argmax=False,axis=0):
@@ -28,7 +29,7 @@ def confusion(targ,pred,labels=None,nb_categories=None,argmax=False,axis=0):
 
 
 def precision(category_index,cmatrix=None,targ=None,pred=None,argmax=False,axis=0):
-    if not cmatrix:
+    if cmatrix is None:
         cmatrix=confusion(targ,pred,argmax=argmax,axis=axis)
     tp_plus_fp=cmatrix[:,category_index].sum()
     if tp_plus_fp==0:
@@ -56,7 +57,7 @@ def fbeta(
         pred=None,
         beta=DEFAULT_BETA,
         argmax=False,
-        axis=0
+        axis=0,
         return_precision_recall=False):
     if not precision:
         cmatrix=confusion(targ,pred,argmax=argmax,axis=axis)
