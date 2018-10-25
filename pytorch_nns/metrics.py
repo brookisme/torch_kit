@@ -4,12 +4,16 @@ import pytorch_nns.helpers as h
 from sklearn.metrics import confusion_matrix
 
 DEFAULT_BETA=2
+VALIDITY_BOUND=1e-3
+INVALID_VALUE=False
+ZERO_DENOMINATOR_VALUE=1.0
+
 
 def target_prediction_argmax(targ,pred,axis=0):
     return h.argmax(pred,axis=axis),h.argmax(targ,axis=axis)
 
 
-def accuracy(pred,targ,argmax=True,axis=0):
+def accuracy(pred,targ,argmax=False,axis=0):
     if argmax:
         targ,pred=target_prediction_argmax(targ,pred,axis=axis)
     return (pred==targ).mean()
@@ -28,24 +32,40 @@ def confusion(targ,pred,labels=None,nb_categories=None,argmax=False,axis=0):
         labels=labels)
 
 
-def precision(category_index,cmatrix=None,targ=None,pred=None,argmax=False,axis=0):
+def precision(
+        category_index,
+        cmatrix=None,
+        targ=None,
+        pred=None,
+        argmax=False,
+        axis=0,
+        total=None,
+        validity_bound=VALIDITY_BOUND):
     if cmatrix is None:
         cmatrix=confusion(targ,pred,argmax=argmax,axis=axis)
-    tp_plus_fp=cmatrix[:,category_index].sum()
-    if tp_plus_fp==0:
-        return 1.0 
-    else: 
-        return cmatrix[category_index,category_index]/tp_plus_fp
+    return _valid_divider(
+        validity_bound,
+        cmatrix[category_index,category_index],
+        cmatrix[:,category_index].sum(),
+        total or cmatrix.sum())
 
 
-def recall(category_index,cmatrix=None,targ=None,pred=None,argmax=False,axis=0):
+def recall(
+        category_index,
+        cmatrix=None,
+        targ=None,
+        pred=None,
+        argmax=False,
+        axis=0,
+        total=None,
+        validity_bound=None):
     if cmatrix is None:
         cmatrix=confusion(targ,pred,argmax=argmax,axis=axis)
-    tp_plus_fn=cmatrix[category_index].sum()
-    if tp_plus_fn==0:
-        return 1.0
-    else:
-        return cmatrix[category_index,category_index]/tp_plus_fn
+    return _valid_divider(
+        validity_bound,
+        cmatrix[category_index,category_index],
+        cmatrix[category_index].sum(),
+        total or cmatrix.sum())
 
 
 def fbeta(
@@ -58,24 +78,58 @@ def fbeta(
         beta=DEFAULT_BETA,
         argmax=False,
         axis=0,
+        total=None,
+        validity_bound=None,
         return_precision_recall=False):
     if precision is None:
         cmatrix=confusion(targ,pred,argmax=argmax,axis=axis)
         precision=precision(
             category_index=category_index,
-            cmatrix=cmatrix)
+            cmatrix=cmatrix,
+            zero_bound=zero_bound,
+            zero_bound_value=zero_bound_value)
         recall=recall(
             category_index=category_index,
-            cmatrix=cmatrix)
-    beta_sq=(beta**2)
-    if (precision==0) and (recall==0):
-        return 0.0
+            cmatrix=cmatrix,
+            zero_bound=zero_bound,
+            zero_bound_value=zero_bound_value)
+    if _is_false(precision) or _is_false(recall):
+        return INVALID_VALUE
     else:
-        fbeta=(1+beta_sq)*(precision*recall)/(beta_sq*precision + recall)
-        if return_precision_recall:
-            return fbeta, precision, recall
+        beta_sq=(beta**2)
+        if (precision==0) and (recall==0):
+            return 0.0
         else:
-            return fbeta
+            fbeta=(1+beta_sq)*(precision*recall)/(beta_sq*precision + recall)
+            if return_precision_recall:
+                return fbeta, precision, recall
+            else:
+                return fbeta
+
+
+def _valid_divider(validity_bound,numerator,denominator,total):
+        if denominator==0:
+            return ZERO_DENOMINATOR_VALUE
+        elif numerator:
+            return numerator/denominator
+        elif validity_bound and _is_not_valid(
+                validity_bound,
+                denominator,
+                total):
+            return INVALID_VALUE
+        else:
+            return 0
+
+
+def _is_not_valid(validity_bound,value,total):
+    return ((value/total)<validity_bound)
+
+
+def _is_false(value):
+    return value in [False,None]
+
+
+
 
 
 
