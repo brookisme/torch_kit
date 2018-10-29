@@ -120,7 +120,8 @@ class Trainer(object):
             patience=0,
             patience_start=0,
             initial_loss=9e12,
-            log=True):
+            log=True,
+            log_header=True):
         # initialize training
         self.best_loss=initial_loss
         self.best_epoch=-1
@@ -136,7 +137,8 @@ class Trainer(object):
         self.patience=patience
         self.patience_start=patience_start
         self.nb_increased_losses=0
-        self._set_logger(log)
+        # init logging
+        self._set_logger(log,log_header)
         # train
         self._print("="*LINE_LENGTH)
         self._print("Trainer.fit:start_time: {}".format(
@@ -202,6 +204,10 @@ class Trainer(object):
         self._print("Trainer.fit:duration: {}".format(
             str(self.train_end_time-self.train_start_time)))
         h.print_line("=")
+        if self.file_handler:
+            self.logger.removeHandler(self.file_handler)
+            self.logger=None
+            self.file_handler=None
 
 
     def _run_epoch(self,
@@ -365,7 +371,7 @@ class Trainer(object):
             return True
 
 
-    def _set_logger(self,log):
+    def _set_logger(self,log,log_header):
         if log:
             if isinstance(log,str):
                 log_filename=log
@@ -373,10 +379,15 @@ class Trainer(object):
                 log_filename=f'train_{self.train_start_timestamp}.log'
             self.logger=logging.getLogger(__name__)
             self.logger.setLevel(logging.DEBUG)
-            file_handler=logging.FileHandler(log_filename)
-            self.logger.addHandler(file_handler)
+            self.file_handler=logging.FileHandler(log_filename)
+            self.logger.addHandler(self.file_handler)
+            if log_header:
+                if not isinstance(log_header,str):
+                    log_header=log_filename
+                self._print(log_header,log=True)
         else:
             self.logger=False
+            self.file_handler=False
 
 
     def _print(self,msg,log=False,level='info'):

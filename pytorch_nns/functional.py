@@ -17,8 +17,7 @@ def category_weights(
         total=None,
         use_log=True,
         multiplier=0.15,
-        min_weight=1.0,
-        max_weight=25.0):
+        max_weight=10.0):
     """ category_weights
 
     Args:
@@ -39,7 +38,9 @@ def category_weights(
         weight=multiplier*total/float(v)
         if use_log:
             weight=math.log(weight)
-        weights[key]=min(max_weight,max(weight,min_weight))
+        weights[key]=weight
+    minv=min(weights.values())
+    weights={ k: min(max_weight,v/minv) for k,v in weights.items() }
     return weights
 
 
