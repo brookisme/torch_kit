@@ -303,7 +303,7 @@ class Trainer(object):
     def _batch_log(self,loss,outputs,targets):
         log={}
         log["loss"]=loss
-        log["acc"]=metrics.accuracy(outputs,targets)
+        log["acc"]=metrics.accuracy(outputs,targets,argmax=True,axis=1)
         return log
 
 

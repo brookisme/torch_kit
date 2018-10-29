@@ -9,6 +9,7 @@ INVALID_VALUE=False
 ZERO_DENOMINATOR_VALUE=1.0
 
 
+
 def target_prediction_argmax(targ,pred,axis=0):
     return h.argmax(pred,axis=axis),h.argmax(targ,axis=axis)
 
@@ -16,7 +17,10 @@ def target_prediction_argmax(targ,pred,axis=0):
 def accuracy(pred,targ,argmax=False,axis=0):
     if argmax:
         targ,pred=target_prediction_argmax(targ,pred,axis=axis)
-    return (pred==targ).mean()
+    test=(pred==targ)
+    if torch.is_tensor(test):
+        test=test.float()
+    return test.mean()
 
 
 def confusion(targ,pred,labels=None,nb_categories=None,argmax=False,axis=0):
