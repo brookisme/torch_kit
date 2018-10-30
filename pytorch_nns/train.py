@@ -1,4 +1,4 @@
-import os.path
+import os
 import logging
 from datetime import datetime
 import torch.cuda
@@ -22,6 +22,7 @@ HISTORY='HISTORY'
 WEIGHTS='WEIGHTS'
 TS_FMT="%Y-%m-%dT%H:%M:%S"
 LINE_LENGTH=75
+LOG_DIR='logs'
 
 #
 # HELPERS
@@ -121,7 +122,8 @@ class Trainer(object):
             patience_start=0,
             initial_loss=9e12,
             log=True,
-            log_header=True):
+            log_header=True
+            log_dir=LOG_DIR):
         # initialize training
         self.best_loss=initial_loss
         self.best_epoch=-1
@@ -138,7 +140,7 @@ class Trainer(object):
         self.patience_start=patience_start
         self.nb_increased_losses=0
         # init logging
-        self._set_logger(log,log_header)
+        self._set_logger(log,log_header,log_dir)
         # train
         self._print("="*LINE_LENGTH)
         self._print("Trainer.fit:start_time: {}".format(
@@ -371,20 +373,23 @@ class Trainer(object):
             return True
 
 
-    def _set_logger(self,log,log_header):
+    def _set_logger(self,log,log_header,log_dir):
         if log:
             if isinstance(log,str):
                 log_filename=log
             else:
                 log_filename=f'train_{self.train_start_timestamp}.log'
-            self.logger=logging.getLogger(__name__)
-            self.logger.setLevel(logging.DEBUG)
-            self.file_handler=logging.FileHandler(log_filename)
-            self.logger.addHandler(self.file_handler)
             if log_header:
                 if not isinstance(log_header,str):
                     log_header=log_filename
                 self._print(log_header,log=True)
+            if log_dir:
+                os.makedirs(log_dir,exist_ok=True)
+                log_filename=f'{log_dir}/{log_filename}'
+            self.file_handler=logging.FileHandler(log_filename)
+            self.logger.addHandler(self.file_handler)
+            self.logger=logging.getLogger(__name__)
+            self.logger.setLevel(logging.DEBUG)
         else:
             self.logger=False
             self.file_handler=False
