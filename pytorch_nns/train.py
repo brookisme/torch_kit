@@ -122,7 +122,7 @@ class Trainer(object):
             patience_start=0,
             initial_loss=9e12,
             log=True,
-            log_header=True
+            log_header=True,
             log_dir=LOG_DIR):
         # initialize training
         self.best_loss=initial_loss
