@@ -17,7 +17,7 @@ def category_weights(
         total=None,
         use_log=True,
         multiplier=0.15,
-        max_weight=10.0):
+        max_weight=5.0):
     """ category_weights
 
     Args:
