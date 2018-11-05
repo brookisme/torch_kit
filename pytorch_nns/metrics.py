@@ -28,7 +28,7 @@ def confusion(targ,pred,labels=None,nb_categories=None,argmax=False,axis=0):
         if not nb_categories:
             nb_categories=targ.shape[axis]
         targ,pred=target_prediction_argmax(targ,pred,axis=axis)
-    if not labels:
+    if labels is None:
         labels=range(nb_categories)
     return confusion_matrix(
         targ.reshape(-1),

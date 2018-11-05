@@ -379,17 +379,17 @@ class Trainer(object):
                 log_filename=log
             else:
                 log_filename=f'train_{self.train_start_timestamp}.log'
-            if log_header:
-                if not isinstance(log_header,str):
-                    log_header=log_filename
-                self._print(log_header,log=True)
             if log_dir:
                 os.makedirs(log_dir,exist_ok=True)
                 log_filename=f'{log_dir}/{log_filename}'
             self.file_handler=logging.FileHandler(log_filename)
-            self.logger.addHandler(self.file_handler)
             self.logger=logging.getLogger(__name__)
+            self.logger.addHandler(self.file_handler)
             self.logger.setLevel(logging.DEBUG)
+            if log_header:
+                if not isinstance(log_header,str):
+                    log_header=log_filename
+                self._print(log_header,log=True)
         else:
             self.logger=False
             self.file_handler=False

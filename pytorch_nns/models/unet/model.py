@@ -59,6 +59,7 @@ class UNet(nn.Module):
             bn=False,
             se=True,
             se_up=None,
+            output_activation=None,
             act='ReLU',
             act_kwargs={}):
         super(UNet, self).__init__()
@@ -105,6 +106,7 @@ class UNet(nn.Module):
         self.up_blocks=nn.ModuleList(up_layers)
         self.out_size=self.up_blocks[-1].out_size
         self.output_conv=self._output_layer(output_in_ch,out_ch)
+        self.output_activation=self._get_output_activation(output_activation)
 
         
     def forward(self, x):
@@ -118,7 +120,9 @@ class UNet(nn.Module):
         for skip,block in zip(skips,self.up_blocks):
             x=block(x,skip)
         x=self.output_conv(x)
-        return F.softmax(x,dim=1)
+        if self.output_activation:
+            x=self.output_activation(x)
+        return x
     
     
     #
@@ -197,4 +201,24 @@ class UNet(nn.Module):
            kernel_size=1,
            stride=1,
            padding=0)
+
+
+    def _get_output_activation(self,output_activation):
+        if isinstance(output_activation,str):
+            if output_activation.lower()=='sigmoid':
+                act=nn.Sigmoid()
+            elif output_activation.lower()=='softmax':
+                act=nn.Softmax(dim=1)
+            else:
+                raise ValueError('[ERROR] unet: {output_activation} not implemented via str')
+        elif output_activation is None:
+            if self.out_ch==1:
+                act=nn.Sigmoid()
+            else:
+                act=nn.Softmax(dim=1)
+        elif output_activation is False:
+            act=False
+        else:
+            act=output_activation()
+        return act
     
