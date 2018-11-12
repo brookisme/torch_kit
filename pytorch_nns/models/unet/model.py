@@ -219,6 +219,9 @@ class UNet(nn.Module):
         elif output_activation is False:
             act=False
         else:
-            act=output_activation()
+            if callable(output_activation()):
+                act=output_activation()
+            else:
+                act
         return act
     
