@@ -14,9 +14,19 @@ def target_prediction_argmax(targ,pred,axis=0):
     return h.argmax(pred,axis=axis),h.argmax(targ,axis=axis)
 
 
-def accuracy(pred,targ,argmax=False,axis=0):
+def accuracy(
+        pred,
+        targ,
+        argmax=False,
+        round_prediction=False,
+        true_threshold=0.5,
+        axis=0):
     if argmax:
         targ,pred=target_prediction_argmax(targ,pred,axis=axis)
+    elif round_prediction:
+        shift=true_threshold-0.5
+        pred=pred+shift
+        pred=torch.round(pred)
     test=(pred==targ)
     if torch.is_tensor(test):
         test=test.float()

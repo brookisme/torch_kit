@@ -123,6 +123,7 @@ class Trainer(object):
             initial_loss=9e12,
             log=True,
             log_header=True,
+            round_prediction=False,
             log_dir=LOG_DIR):
         # initialize training
         self.best_loss=initial_loss
@@ -139,6 +140,7 @@ class Trainer(object):
         self.patience=patience
         self.patience_start=patience_start
         self.nb_increased_losses=0
+        self.round_prediction=round_prediction
         # init logging
         self._set_logger(log,log_header,log_dir)
         # train
@@ -311,7 +313,12 @@ class Trainer(object):
     def _batch_log(self,loss,outputs,targets):
         log={}
         log["loss"]=loss
-        log["acc"]=metrics.accuracy(outputs,targets,argmax=True,axis=1)
+        log["acc"]=metrics.accuracy(
+            outputs,
+            targets,
+            argmax=(not self.round_prediction),
+            round_prediction=self.round_prediction,
+            axis=1)
         return log
 
 
