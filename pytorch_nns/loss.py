@@ -13,8 +13,10 @@ class WeightedCategoricalCrossentropy(nn.Module):
             * weights<tensor|nparray|list>: category weights
             * device<str|None>: device-name. if exists, send weights to specified device
     """
-    def __init__(self, weights, device=None):
+    def __init__(self, weights=None,nb_categories=None,device=None):
         super(WeightedCategoricalCrossentropy, self).__init__()
+        if weights is None:
+            weights=[1.0]*nb_categories
         self.weights=h.to_tensor(weights)
         if device:
             self.weights=self.weights.to(device)

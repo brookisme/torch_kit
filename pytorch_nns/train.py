@@ -109,6 +109,13 @@ class Trainer(object):
                 noisy=noisy)
 
 
+    def load_best(self):
+        h.load_weights(
+            self.model,
+            self.best_weights_path,
+            device=self.device)
+
+
     def fit(self,
             train_loader,
             valid_loader=None,
@@ -124,6 +131,7 @@ class Trainer(object):
             log=True,
             log_header=True,
             round_prediction=False,
+            sigmoid_prediction=False,
             log_dir=LOG_DIR):
         # initialize training
         self.best_loss=initial_loss
@@ -141,6 +149,7 @@ class Trainer(object):
         self.patience_start=patience_start
         self.nb_increased_losses=0
         self.round_prediction=round_prediction
+        self.sigmoid_prediction=sigmoid_prediction
         # init logging
         self._set_logger(log,log_header,log_dir)
         # train
@@ -313,6 +322,8 @@ class Trainer(object):
     def _batch_log(self,loss,outputs,targets):
         log={}
         log["loss"]=loss
+        if self.sigmoid_prediction:
+            outputs=torch.sigmoid(outputs)
         log["acc"]=metrics.accuracy(
             outputs,
             targets,

@@ -88,6 +88,14 @@ def get_device(force_cpu=False):
     return torch.device(CUDA if use_gpu else CPU)
 
 
+def load_weights(model,weights_path,device=None,map_location=None):
+    if not map_location:
+        if device and (device.type=='cpu'):
+            map_location='cpu'
+    state_dict=torch.load(weights_path,map_location=map_location)
+    model.load_state_dict(state_dict)
+
+
 def get_model(
         net,
         config={},
@@ -102,11 +110,8 @@ def get_model(
         device=get_device()
     model=net(**config)
     if init_weights:
-        if not map_location:
-            if device and (device.type=='cpu'):
-                map_location='cpu'
         print("init_weights: ",init_weights)
-        model.load_state_dict(torch.load(init_weights,map_location=map_location))
+        load_weights(model,init_weights,device=device,map_location=map_location)
     if device:
         model=model.to(device)
     if weight_initializer:
