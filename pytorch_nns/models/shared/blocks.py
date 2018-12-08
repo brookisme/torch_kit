@@ -27,11 +27,12 @@ class GeneralizedConvResnet(nn.Module):
             k0=kernel_sizes[0]
             p0=paddings
             same_padding=Conv.same_padding(k0)
-            self.cropping=depth*(same_padding-p0)
+            self.cropping=conv_kwargs['depth']*(same_padding-p0)
             self.out_size=in_size-2*self.cropping
             paddings=[p0]
             for k in kernel_sizes[1:]:
-                paddings.append( ((k-k0)//2)-p0 )
+                p=((k-k0)//2)-p0
+                paddings.append(p)
         self.kernel_sizes=kernel_sizes
         self.paddings=paddings
         convs=[]
