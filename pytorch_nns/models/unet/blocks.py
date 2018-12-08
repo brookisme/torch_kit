@@ -57,7 +57,7 @@ class Down(nn.Module):
             self.conv_block=blocks.GeneralizedConvResnet(
                     in_ch=in_ch,
                     out_ch=self.out_ch,
-                    in_size=in_size,
+                    in_size=conv_in_size,
                     depth=depth,
                     kernel_sizes=[3,5],
                     paddings=padding,
@@ -66,12 +66,12 @@ class Down(nn.Module):
                     bn=bn,
                     se=se,
                     act=act,
-                    act_kwargs=act_kwargs)          
+                    act_kwargs=act_kwargs)
         else:
             self.conv_block=blocks.Conv(
                 in_ch=in_ch,
-                out_ch=self.out_ch,
                 in_size=conv_in_size,
+                out_ch=self.out_ch,
                 depth=depth,
                 kernel_size=kernel_size,
                 padding=padding,
@@ -83,7 +83,7 @@ class Down(nn.Module):
                 act_kwargs=act_kwargs)
         self.out_size=self.conv_block.out_size
 
-        
+
     def forward(self, x):
         x=self.down(x)
         return self.conv_block(x)
@@ -164,7 +164,7 @@ class Up(nn.Module):
             self.conv_block=blocks.GeneralizedConvResnet(
                     in_ch=in_ch,
                     out_ch=self.out_ch,
-                    in_size=in_size,
+                    in_size=self.out_size,
                     depth=depth,
                     kernel_sizes=[3,5],
                     paddings=padding,
@@ -176,8 +176,8 @@ class Up(nn.Module):
                     act_kwargs=act_kwargs)          
         else:
             self.conv_block=blocks.Conv(
-                in_ch,
-                self.out_size,
+                in_ch=in_ch,
+                in_size=self.out_size,
                 out_ch=self.out_ch,
                 depth=depth,
                 padding=padding,

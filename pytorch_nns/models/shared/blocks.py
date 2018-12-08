@@ -22,13 +22,11 @@ class GeneralizedConvResnet(nn.Module):
         if (paddings is None) or (paddings is 'same'):
             paddings=['same']*len(kernel_sizes)
             self.cropping=False
-            self.out_size=in_size
         elif isinstance(paddings,int):
             k0=kernel_sizes[0]
             p0=paddings
             same_padding=Conv.same_padding(k0)
             self.cropping=conv_kwargs['depth']*(same_padding-p0)
-            self.out_size=in_size-2*self.cropping
             paddings=[p0]
             for k in kernel_sizes[1:]:
                 p=((k-k0)//2)-p0
@@ -39,11 +37,13 @@ class GeneralizedConvResnet(nn.Module):
         for k,p in zip(kernel_sizes,paddings):
             conv=Conv(
                 in_ch=in_ch,
+                out_ch=out_ch,
                 in_size=in_size,
                 kernel_size=k,
                 padding=p,
                 **conv_kwargs)
             convs.append(conv)
+        self.out_size=convs[-1].out_size
         self.gen_res_block=GeneralizedResBlock(
                 convs,
                 in_ch,

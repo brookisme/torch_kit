@@ -60,6 +60,7 @@ class UNet(nn.Module):
             se=True,
             se_up=None,
             gen_res=False,
+            gen_res_up=None,
             output_activation=None,
             act='ReLU',
             act_kwargs={}):
@@ -82,6 +83,7 @@ class UNet(nn.Module):
             se=False,
             act=act,
             act_kwargs=act_kwargs)
+        # down-path
         down_layers=self._down_layers(
             self.input_conv.out_ch,
             self.input_conv.out_size,
@@ -93,17 +95,20 @@ class UNet(nn.Module):
             act=act,
             act_kwargs=act_kwargs)
         self.down_blocks=nn.ModuleList(down_layers)
+        # up-path
         if res_up is None:
             res_up=res
         if se_up is None:
             se_up=se
+        if gen_res_up is None:
+            gen_res_up=gen_res
         up_layers=self._up_layers(
             down_layers,
             res=res_up,
             res_multiplier=res_multiplier,
             bn=bn,
             se=se_up,
-            gen_res=gen_res,
+            gen_res=gen_res_up,
             act=act,
             act_kwargs=act_kwargs)
         self.up_blocks=nn.ModuleList(up_layers)
