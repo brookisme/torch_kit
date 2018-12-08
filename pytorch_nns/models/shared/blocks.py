@@ -3,6 +3,126 @@ import torch.nn.functional as F
 
 
 RES_MULTIPLIER=0.75
+
+
+class GeneralizedConvResnet(nn.Module):
+    r""" GenConvs: for GeneralizedResBlocks
+    """
+    def __init__(self,
+                in_ch,
+                out_ch,
+                in_size,
+                kernel_sizes=[3,5], 
+                paddings=None,
+                multiplier=RES_MULTIPLIER,
+                crop=True,
+                **conv_kwargs):
+        super(GeneralizedConvResnet, self).__init__()
+        conv_kwargs.pop('padding',None)    
+        if (paddings is None) or (paddings is 'same'):
+            paddings=['same']*len(kernel_sizes)
+            self.cropping=False
+            self.out_size=in_size
+        elif isinstance(paddings,int):
+            k0=kernel_sizes[0]
+            p0=paddings
+            same_padding=Conv.same_padding(k0)
+            self.cropping=depth*(same_padding-p0)
+            self.out_size=in_size-2*self.cropping
+            paddings=[p0]
+            for k in kernel_sizes[1:]:
+                paddings.append( ((k-k0)//2)-p0 )
+        self.kernel_sizes=kernel_sizes
+        self.paddings=paddings
+        convs=[]
+        for k,p in zip(kernel_sizes,paddings):
+            conv=Conv(
+                in_ch=in_ch,
+                in_size=in_size,
+                kernel_size=k,
+                padding=p,
+                **conv_kwargs)
+            convs.append(conv)
+        self.gen_res_block=GeneralizedResBlock(
+                convs,
+                in_ch,
+                out_ch,
+                multiplier=multiplier,
+                crop=crop )
+
+
+    def forward(self, x):
+        return self.gen_res_block(x)
+
+
+
+class GeneralizedResBlock(nn.Module):
+    r""" GeneralizedResBlock
+
+    Args:
+        blocks: list of blocks or lists of layers
+        multiplier <float [RES_MULTIPLIER]>: ident multiplier
+        crop: <int|bool> 
+            if <int> cropping = crop
+            elif True calculate cropping
+            else no cropping
+
+    """
+    def __init__(self,
+            blocks,
+            in_ch,
+            out_ch,
+            multiplier=RES_MULTIPLIER,
+            crop=True):
+        super(GeneralizedResBlock, self).__init__()
+        self.blocks=self._process_blocks(blocks)
+        self.in_ch=in_ch
+        self.out_ch=out_ch
+        self.multiplier=multiplier
+        self.crop=crop
+        if self.in_ch!=self.out_ch:        
+            self.ident_conv=nn.Conv2d(
+                        in_channels=self.in_ch,
+                        out_channels=self.out_ch,
+                        kernel_size=1)
+        else:
+            self.ident_conv=False
+
+    
+    def forward(self, x):
+        x_out=self.blocks[0](x)
+        for b in self.blocks[1:]:
+            x_out+=b(x)
+        if self.crop:
+            x=self._crop(x,x_out)
+        if self.ident_conv:
+            x=self.ident_conv(x)
+        return (self.multiplier*x) + x_out 
+
+
+    def _process_blocks(self,blocks):
+        return nn.ModuleList(self._process_block(b) for b in blocks)
+
+
+    def _process_block(self,block):
+        if isinstance(block,list):
+            return nn.Sequential(*block)
+        else:
+            return block
+
+
+    def _crop(self,x,layers_out):
+        if self.crop is True:
+            # get cropping
+            out_size=layers_out.size()[-1]
+            x_size=x.size()[-1]
+            self.crop=(x_size-out_size)//2
+        return x[:,:,self.crop:-self.crop,self.crop:-self.crop]
+
+
+
+
+RES_MULTIPLIER=0.75
 class ResBlock(nn.Module):
     r""" ResBlock
 

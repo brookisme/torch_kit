@@ -41,6 +41,7 @@ class Down(nn.Module):
             res_multiplier=blocks.RES_MULTIPLIER,
             bn=False,
             se=True,
+            gen_res=False,
             act='ReLU',
             act_kwargs={}):
         super(Down, self).__init__()
@@ -52,19 +53,34 @@ class Down(nn.Module):
         cropping=depth*(same_padding-padding)
         self.out_ch=out_ch or 2*in_ch
         self.down=nn.MaxPool2d(kernel_size=2)
-        self.conv_block=blocks.Conv(
-            in_ch=in_ch,
-            out_ch=self.out_ch,
-            in_size=conv_in_size,
-            depth=depth,
-            kernel_size=kernel_size,
-            padding=padding,
-            res=res,
-            res_multiplier=res_multiplier,
-            bn=bn,
-            se=se,
-            act=act,
-            act_kwargs=act_kwargs)
+        if gen_res:
+            self.conv_block=blocks.GeneralizedConvResnet(
+                    in_ch=in_ch,
+                    out_ch=self.out_ch,
+                    in_size=in_size,
+                    depth=depth,
+                    kernel_sizes=[3,5],
+                    padding=padding,
+                    res=False,
+                    res_multiplier=res_multiplier,            
+                    bn=bn,
+                    se=se,
+                    act=act,
+                    act_kwargs=act_kwargs)          
+        else:
+            self.conv_block=blocks.Conv(
+                in_ch=in_ch,
+                out_ch=self.out_ch,
+                in_size=conv_in_size,
+                depth=depth,
+                kernel_size=kernel_size,
+                padding=padding,
+                res=res,
+                res_multiplier=res_multiplier,
+                bn=bn,
+                se=se,
+                act=act,
+                act_kwargs=act_kwargs)
         self.out_size=self.conv_block.out_size
 
         
@@ -129,6 +145,7 @@ class Up(nn.Module):
             res_multiplier=blocks.RES_MULTIPLIER,
             bn=False,
             se=True,
+            gen_res=False,
             act='ReLU',
             act_kwargs={}):
         super(Up, self).__init__()
@@ -143,19 +160,34 @@ class Up(nn.Module):
             self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         else:
             self.up = nn.ConvTranspose2d(in_ch, self.out_ch, 2, stride=2)
-        self.conv_block=blocks.Conv(
-            in_ch,
-            self.out_size,
-            out_ch=self.out_ch,
-            depth=depth,
-            padding=padding,
-            kernel_size=kernel_size,
-            res=res,
-            res_multiplier=res_multiplier,            
-            bn=bn,
-            se=se,
-            act=act,
-            act_kwargs=act_kwargs)
+        if gen_res:
+            self.conv_block=blocks.GeneralizedConvResnet(
+                    in_ch=in_ch,
+                    out_ch=self.out_ch,
+                    in_size=in_size,
+                    depth=depth,
+                    kernel_sizes=[3,5],
+                    padding=padding,
+                    res=False,
+                    res_multiplier=res_multiplier,            
+                    bn=bn,
+                    se=se,
+                    act=act,
+                    act_kwargs=act_kwargs)          
+        else:
+            self.conv_block=blocks.Conv(
+                in_ch,
+                self.out_size,
+                out_ch=self.out_ch,
+                depth=depth,
+                padding=padding,
+                kernel_size=kernel_size,
+                res=res,
+                res_multiplier=res_multiplier,            
+                bn=bn,
+                se=se,
+                act=act,
+                act_kwargs=act_kwargs)
         
         
     def forward(self, x, skip):

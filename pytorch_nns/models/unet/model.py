@@ -59,6 +59,7 @@ class UNet(nn.Module):
             bn=False,
             se=True,
             se_up=None,
+            gen_res=False,
             output_activation=None,
             act='ReLU',
             act_kwargs={}):
@@ -88,6 +89,7 @@ class UNet(nn.Module):
             res_multiplier=res_multiplier,
             bn=bn,
             se=se,
+            gen_res=gen_res,
             act=act,
             act_kwargs=act_kwargs)
         self.down_blocks=nn.ModuleList(down_layers)
@@ -101,6 +103,7 @@ class UNet(nn.Module):
             res_multiplier=res_multiplier,
             bn=bn,
             se=se_up,
+            gen_res=gen_res,
             act=act,
             act_kwargs=act_kwargs)
         self.up_blocks=nn.ModuleList(up_layers)
@@ -135,6 +138,7 @@ class UNet(nn.Module):
             res_multiplier,
             bn,
             se,
+            gen_res,
             act,
             act_kwargs):
         layers=[]
@@ -149,6 +153,7 @@ class UNet(nn.Module):
                 res_multiplier=res_multiplier,
                 bn=bn,
                 se=se,
+                gen_res=gen_res,
                 act=act,
                 act_kwargs=act_kwargs)
             in_ch=layer.out_ch
@@ -164,6 +169,7 @@ class UNet(nn.Module):
             res_multiplier,
             bn,
             se,
+            gen_res,
             act,
             act_kwargs):
         down_layers=down_layers[::-1]
@@ -186,6 +192,7 @@ class UNet(nn.Module):
                 res_multiplier=res_multiplier,
                 bn=bn,
                 se=se,
+                gen_res=gen_res,
                 act=act,
                 act_kwargs=act_kwargs)
             in_ch=layer.out_ch
