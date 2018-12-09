@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 from pytorch_nns.models.shared.blocks import Conv as ConvBlock, RES_MULTIPLIER
+from pytorch_nns.models.shared.blocks import GeneralizedConvResnet
 import pytorch_nns.models.unet.blocks as blocks
 
 
@@ -59,6 +60,7 @@ class UNet(nn.Module):
             bn=False,
             se=True,
             se_up=None,
+            gen_res_in=False,
             gen_res=False,
             gen_res_up=None,
             output_activation=None,
@@ -70,19 +72,34 @@ class UNet(nn.Module):
         self.out_ch=out_ch
         self.padding=padding
         self.kernel_sizes=kernel_sizes or [kernel_size]*network_depth
-        self.input_conv=ConvBlock(
-            in_ch=in_ch,
-            in_size=in_size,
-            out_ch=input_out_ch,
-            padding=padding,
-            kernel_size=kernel_size,
-            depth=self.conv_depth,
-            res=res,
-            res_multiplier=res_multiplier,
-            bn=False,
-            se=False,
-            act=act,
-            act_kwargs=act_kwargs)
+        if gen_res_in:
+            self.input_conv=GeneralizedConvResnet(
+                in_ch=in_ch,
+                in_size=in_size,
+                out_ch=input_out_ch,
+                depth=self.conv_depth,
+                kernel_sizes=[3,5],
+                paddings=padding,
+                res=False,
+                res_multiplier=res_multiplier,            
+                bn=False,
+                se=False,
+                act=act,
+                act_kwargs=act_kwargs)
+        else:
+            self.input_conv=ConvBlock(
+                in_ch=in_ch,
+                in_size=in_size,
+                out_ch=input_out_ch,
+                padding=padding,
+                kernel_size=kernel_size,
+                depth=self.conv_depth,
+                res=res,
+                res_multiplier=res_multiplier,
+                bn=False,
+                se=False,
+                act=act,
+                act_kwargs=act_kwargs)
         # down-path
         down_layers=self._down_layers(
             self.input_conv.out_ch,

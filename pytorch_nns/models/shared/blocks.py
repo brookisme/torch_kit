@@ -19,6 +19,8 @@ class GeneralizedConvResnet(nn.Module):
                 **conv_kwargs):
         super(GeneralizedConvResnet, self).__init__()
         conv_kwargs.pop('padding',None)    
+        self.in_ch=in_ch
+        self.out_ch=out_ch
         if (paddings is None) or (paddings is 'same'):
             paddings=['same']*len(kernel_sizes)
             self.cropping=False
