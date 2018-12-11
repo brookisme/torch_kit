@@ -89,7 +89,7 @@ class BandImportance(object):
         row+=measures.tolist()
         for b in range(self.nb_bands):
             rinpt=self._randomize_band(inpt,b)
-            rmeasures=self._measures(inpt,targ)
+            rmeasures=self._measures(rinpt,targ)
             b_importances=(measures-rmeasures)/(measures+EPS)
             row+=b_importances.tolist()
         return self._clean_row(row)
