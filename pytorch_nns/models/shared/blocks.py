@@ -3,6 +3,8 @@ import torch.nn.functional as F
 
 
 RES_MULTIPLIER=0.75
+PADDING=0
+
 
 
 class GeneralizedConvResnet(nn.Module):
@@ -223,34 +225,19 @@ class SqueezeExcitation(nn.Module):
 
 
 
-
 class Conv(nn.Module):
     r""" Conv Block
-
-    Block of Convolutional Layers followed by optional BatchNorm, SqueezeExcitation, 
-    and activation.
-
-    Note: currently designed for square (H=W) inputs only 
-
+    
     Args:
         in_ch (int): Number of channels in input
-        in_size (int): Size (=H=W) of input
         out_ch (int <None>): Number of channels in output (if None => in_ch)
         depth (int <2>): The number of convolutional layers 
         kernel_size (int <3>): Kernel Size
         stride (int <1>): Stride
         padding (int|str <0>): int or same if padding='same' -> int((kernel_size-1)/2) 
-        res (bool <True>): ConvBlock -> ResBlock(ConvBlock)
-        res_multiplier (float <RES_MULTIPLIER>)
-        bn (bool <True>): Add batch norm layer
-        se (bool <True>): Add Squeeze and Excitation Block
+        batch_norm (bool <True>): Add batch norm after conv
         act (str <'relu'>): Method name of activation function after each Conv Layer
-        act_kwargs (dict <{}>): Kwargs for activation function after each Conv Layer
-        
-    Properties:
-        out_ch <int>: Number of channels of the output
-        out_size <int>: Size (=H=W) of input
-
+        act_config (dict <{}>): Kwargs for activation function after each Conv Layer
     """
     #
     # CONSTANTS
@@ -273,63 +260,45 @@ class Conv(nn.Module):
     #
     def __init__(self,
             in_ch,
-            in_size,
             out_ch=None,
             depth=2, 
             kernel_size=3, 
             stride=1, 
-            padding=0, 
-            in_block_relu=True,
-            res=False,
-            res_multiplier=RES_MULTIPLIER,
-            bn=False,
-            se=False,
+            padding=PADDING, 
+            batch_norm=False,
             act='ReLU',
-            act_kwargs={}):
+            act_config={}):
         super(Conv, self).__init__()
-        same_padding=Conv.same_padding(kernel_size)
+        self.in_ch=int(in_ch)
+        self.out_ch=int(out_ch) or self.in_ch
         if padding==Conv.SAME:
-            padding=same_padding
-            self.cropping=False
-            self.out_size=in_size
-        else:
-            self.cropping=depth*(same_padding-padding)
-            self.out_size=in_size-2*self.cropping
-        self.in_ch=in_ch
-        self.out_ch=out_ch or 2*in_ch
-        self._set_conv_layers(
+            padding=Conv.same_padding(kernel_size)
+        self.padding=padding
+        self.conv_layers=self._conv_layers(
             depth,
             kernel_size,
             stride,
             padding,
-            res,
-            res_multiplier,
+            batch_norm,
             act,
-            act_kwargs)
-        self._set_processes_layers(bn,se,act,act_kwargs)
+            act_config)
 
         
     def forward(self, x):
-        x=self.conv_layers(x)
-        if self.bn:
-            x=self.bn(x)
-        if self.se:
-            x=self.se(x)
-        return x
+        return self.conv_layers(x)
 
 
     #
     # INTERNAL METHODS
     #    
-    def _set_conv_layers(self,
+    def _conv_layers(self,
             depth,
             kernel_size,
             stride,
             padding,
-            res,
-            res_multiplier,
+            batch_norm,
             act,
-            act_kwargs):
+            act_config):
         layers=[]
         for index in range(depth):
             if index==0:
@@ -342,29 +311,13 @@ class Conv(nn.Module):
                     out_channels=self.out_ch,
                     kernel_size=kernel_size,
                     stride=stride,
-                    padding=padding))
+                    padding=padding,
+                    bias=(not batch_norm)))
+            if batch_norm:
+                layers.append(nn.BatchNorm2d(self.out_ch))
             if act:
-                layers.append(self._act_layer(act)(**act_kwargs))
-        if res:
-            self.conv_layers=ResBlock(
-                layers,
-                multiplier=res_multiplier,
-                crop=self.cropping,
-                in_ch=self.in_ch,
-                out_ch=self.out_ch)
-        else:
-            self.conv_layers=nn.Sequential(*layers)
-
-
-    def _set_processes_layers(self,bn,se,act,act_kwargs):
-        if bn:
-            self.bn=nn.BatchNorm2d(self.out_ch)
-        else:
-            self.bn=False
-        if se:
-            self.se=SqueezeExcitation(self.out_ch)
-        else:
-            self.se=False
+                layers.append(self._act_layer(act)(**act_config))
+        return nn.Sequential(*layers)
 
         
     def _act_layer(self,act):
@@ -372,5 +325,4 @@ class Conv(nn.Module):
             return getattr(nn,act)
         else:
             return act
-
 

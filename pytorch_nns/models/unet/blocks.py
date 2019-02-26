@@ -1,8 +1,7 @@
+PADDING=0
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import pytorch_nns.models.shared.blocks as blocks
-
+from pytorch_nns.models.shared.blocks import Conv 
 
 
 class Down(nn.Module):
@@ -13,80 +12,19 @@ class Down(nn.Module):
         2. Conv Block 
 
     Args:
-        in_ch (int): Number of channels in input
-        in_size (int): Size (=H=W) of input
-        out_ch (int <None>): Number of channels in output (if None => in_ch)
-        depth (int <2>): The number of convolutional layers 
-        padding (int <0>): Padding. Use 0 or 1 since the kernal size is fixed at 3x3
-        res (bool <True>): ConvBlock -> ResBlock(ConvBlock)
-        res_multiplier (float <blocks.RES_MULTIPLIER>)
-        bn (bool <True>): Add batch norm layer after Conv Block
-        se (bool <True>): Add Squeeze and Excitation Block after Max Pool
-        act (str <'relu'>): Method name of activation function after Conv Block
-        act_kwargs (dict <{}>): Kwargs for activation function after Conv Block
-        
-    Properties:
-        out_ch <int>: Number of channels of the output
-        out_size <int>: Size (=H=W) of input
-
+        Conv kwargs (See Conv)
     """    
     def __init__(self,
-            in_ch,
-            in_size,
-            out_ch=None,
-            depth=2,
-            padding=0,
-            kernel_size=3,
-            res=False,
-            res_multiplier=blocks.RES_MULTIPLIER,
-            bn=False,
-            se=True,
-            gen_res=False,
-            act='ReLU',
-            act_kwargs={}):
+            **kwargs):
         super(Down, self).__init__()
-        same_padding=blocks.Conv.same_padding(kernel_size)
-        if padding==blocks.Conv.SAME:
-            padding=same_padding
-        self.in_size=in_size
-        conv_in_size=in_size//2
-        cropping=depth*(same_padding-padding)
-        self.out_ch=out_ch or 2*in_ch
         self.down=nn.MaxPool2d(kernel_size=2)
-        if gen_res:
-            self.conv_block=blocks.GeneralizedConvResnet(
-                    in_ch=in_ch,
-                    out_ch=self.out_ch,
-                    in_size=conv_in_size,
-                    depth=depth,
-                    kernel_sizes=[3,5],
-                    paddings=padding,
-                    res=False,
-                    res_multiplier=res_multiplier,            
-                    bn=bn,
-                    se=se,
-                    act=act,
-                    act_kwargs=act_kwargs)
-        else:
-            self.conv_block=blocks.Conv(
-                in_ch=in_ch,
-                in_size=conv_in_size,
-                out_ch=self.out_ch,
-                depth=depth,
-                kernel_size=kernel_size,
-                padding=padding,
-                res=res,
-                res_multiplier=res_multiplier,
-                bn=bn,
-                se=se,
-                act=act,
-                act_kwargs=act_kwargs)
-        self.out_size=self.conv_block.out_size
-
+        self.conv_block=Conv(**kwargs)
 
     def forward(self, x):
         x=self.down(x)
         return self.conv_block(x)
+
+
 
 
 class Up(nn.Module):
@@ -99,7 +37,6 @@ class Up(nn.Module):
 
     Args:
         in_ch (int): Number of channels in input
-        in_size (int): Size (=H=W) of input
         out_ch (int <None>): Number of channels in output (if None => in_ch)
         depth (int <2>): The number of convolutional layers 
         bilinear (bool <False>): If true use bilinear Upsample otherwise ConvTranspose2d
@@ -107,10 +44,7 @@ class Up(nn.Module):
             If padding is 0: cropping for skip connection.  If None the cropping will be
             calculated.  Note: both input-size minus skip-size must be even. 
         padding (int <0>): Padding. Use 0 or 1 since the kernal size is fixed at 3x3
-        res (bool <True>): ConvBlock -> ResBlock(ConvBlock)
-        res_multiplier (float <blocks.RES_MULTIPLIER>)
-        bn (bool <True>): Add batch norm layer after Conv Block
-        se (bool <True>): Add Squeeze and Excitation Block after Conv Block
+        batch_norm (bool <True>): Add batch norm after conv
         act (str <'relu'>): Method name of activation function after Conv Block
         act_kwargs (dict <{}>): Kwargs for activation function after Conv Block
         
@@ -129,66 +63,37 @@ class Up(nn.Module):
             skip_size (int): size (=h=w) of skip connection
             size (int): size (=h=w) of input
         """
-        return int((skip_size-size)/2)
+        return int((skip_size-size)//2)
     
  
     def __init__(self,
             in_ch,
-            in_size,
             out_ch=None,
             depth=2,
             bilinear=False,
             crop=None,
-            padding=0,
+            padding=PADDING,
             kernel_size=3,
-            res=False,
-            res_multiplier=blocks.RES_MULTIPLIER,
-            bn=False,
-            se=True,
-            gen_res=False,
+            batch_norm=False,
             act='ReLU',
-            act_kwargs={}):
+            act_config={}):
         super(Up, self).__init__()
-        same_padding=blocks.Conv.same_padding(kernel_size)
-        if padding==blocks.Conv.SAME:
-            padding=same_padding
         self.crop=crop
-        self.padding=padding
-        self.out_size=(in_size*2)-depth*(same_padding-padding)*2
-        self.out_ch=out_ch or in_ch//2
+        out_ch=out_ch or in_ch//2
         if bilinear:
             self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         else:
-            self.up = nn.ConvTranspose2d(in_ch, self.out_ch, 2, stride=2)
-        if gen_res:
-            self.conv_block=blocks.GeneralizedConvResnet(
-                    in_ch=in_ch,
-                    out_ch=self.out_ch,
-                    in_size=self.out_size,
-                    depth=depth,
-                    kernel_sizes=[3,5],
-                    paddings=padding,
-                    res=False,
-                    res_multiplier=res_multiplier,            
-                    bn=bn,
-                    se=se,
-                    act=act,
-                    act_kwargs=act_kwargs)          
-        else:
-            self.conv_block=blocks.Conv(
-                in_ch=in_ch,
-                in_size=self.out_size,
-                out_ch=self.out_ch,
-                depth=depth,
-                padding=padding,
-                kernel_size=kernel_size,
-                res=res,
-                res_multiplier=res_multiplier,            
-                bn=bn,
-                se=se,
-                act=act,
-                act_kwargs=act_kwargs)
-        
+            self.up = nn.ConvTranspose2d(int(in_ch),int(out_ch),2,stride=2)
+        self.conv_block=Conv(
+            in_ch=in_ch,
+            out_ch=out_ch,
+            depth=depth,
+            padding=padding,
+            kernel_size=kernel_size,         
+            batch_norm=batch_norm,
+            act=act,
+            act_config=act_config)
+
         
     def forward(self, x, skip):
         x = self.up(x)
@@ -198,7 +103,7 @@ class Up(nn.Module):
 
     
     def _crop(self,skip,x):
-        if self.padding is 0:
+        if self.conv_block.padding is 0:
             if self.crop is None:
                 self.crop=self.cropping(skip.size()[-1],x.size()[-1])
             skip=skip[:,:,self.crop:-self.crop,self.crop:-self.crop]
