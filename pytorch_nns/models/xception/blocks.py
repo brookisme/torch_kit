@@ -184,7 +184,11 @@ class XUp(nn.Module):
                 mode='bilinear', 
                 align_corners=True)
         else:
-            self.up = nn.ConvTranspose2d(int(in_ch),int(out_ch),2,stride=2)        
+            self.up = nn.ConvTranspose2d(
+                int(in_ch),
+                int(out_ch),
+                2,
+                stride=2)
         self.separable_block=SeparableBlock(
             depth = depth,
             in_ch = out_ch*2,
