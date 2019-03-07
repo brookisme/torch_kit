@@ -5,6 +5,7 @@ import pytorch_nns.helpers as h
 INPT_KEY='input'
 TARG_KEY='target'
 BASE_STATE_ATTRIBUTES=[
+    'nb_epochs',
     'epoch',
     'batch',
     'batch_loss',
@@ -38,13 +39,13 @@ class Trainer(object):
             valid_loader=None,
             callbacks=[],
             nb_epochs=1):
-        self._reset_state()
+        self._reset_state(nb_epochs=nb_epochs)
         if isinstance(callbacks,list):
             callbacks=Callbacks(callbacks)
         self.callbacks=callbacks
         self.callbacks.on_train_begin(**self._state())
         for epoch in range(1,nb_epochs+1):
-            self._update_state(epoch=epoch)
+            self._reset_state(epoch=epoch)
             self.callbacks.on_epoch_begin(**self._state())
             self._run_epoch(
                 epoch=epoch,
@@ -63,9 +64,9 @@ class Trainer(object):
         self.callbacks.on_train_end(**self._state())
 
 
-    def _reset_state(self):
+    def _reset_state(self,**kwargs):
         for attr in STATE_ATTRIBUTES:
-            setattr(self,attr,0)
+            setattr(self,attr,kwargs.get(attr,0))
 
 
     def _state(self):
@@ -80,9 +81,9 @@ class Trainer(object):
             val = kwargs.get(attr,None)
             if val:
                 setattr(self,attr,val)
-
-        self.batch_loss=kwargs.get('batch_loss',0)
-        self.epoch_total_loss+=self.batch_loss
+        if kwargs.get('batch_loss'):
+            self.epoch_total_loss+=self.batch_loss
+            self.epoch_loss=self.epoch_total_loss/(self.batch+1)
 
 
     def _run_epoch(self,
@@ -173,6 +174,10 @@ class Callbacks(object):
         self.callbacks=callbacks
         for m in Callback.METHODS:
             self._set_method(m)
+
+
+    def __getitem__(self, index):
+        return self.callbacks[index]
 
 
     def _set_method(self,m):
