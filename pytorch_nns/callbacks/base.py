@@ -1,15 +1,36 @@
 """ SKETCH OF TRAINING LOOP
 
+INPT_KEY='input'
+TARG_KEY='target'
+
 class Trainer(object):
 
-    '...'
+    def __init__(self,
+            model,
+            criterion=None,
+            optimizer=None,
+            force_cpu=False):
+        self.device=h.get_device(force_cpu)
+        self.model=model.to(self.device)
+        if criterion and optimizer:
+            self.compile(criterion=criterion,optimizer=optimizer)
 
+    def compile(self,criterion,optimizer):
+        self.criterion=criterion
+        self.optimizer=optimizer
 
-    def fit(self,...):
-        callbacks.on_train_begin()
+    def fit(self,
+            train_loader,
+            valid_loader=None,
+            callbacks=[],
+            nb_epochs=1):
+        if isinstance(callbacks,list):
+            callbacks=cb.Callbacks(callbacks)
+        self.callbacks=callbacks
+        self.callbacks.on_train_begin()
         for epoch in range(1,nb_epochs+1):
             # train
-            callbacks.on_epoch_begin()
+            self.callbacks.on_epoch_begin()
             self._run_epoch(
                 epoch=epoch,
                 loader=train_loader,
@@ -17,14 +38,14 @@ class Trainer(object):
             # validation
             if valid_loader:
                 with torch.no_grad():
-                    callbacks.on_validation_begin()
+                    self.callbacks.on_validation_begin()
                     self._run_epoch(
                         epoch=epoch,
                         loader=valid_loader,
                         train_mode=False)
-                    callbacks.on_validation_end()
-            callbacks.on_epoch_end()
-        callbacks.on_train_end()
+                    self.callbacks.on_validation_end()
+            self.callbacks.on_epoch_end()
+        self.callbacks.on_train_end()
 
 
 
@@ -36,28 +57,36 @@ class Trainer(object):
             self._run_batch(batch,train_mode)
 
 
-
     def _run_batch(self,batch,train_mode):
-            callbacks.on_batch_begin()
+            self.callbacks.on_batch_begin()
             inputs, targets=self._batch_data(batch)
-            callbacks.on_forward_begin()
+            self.callbacks.on_forward_begin()
             outputs=self.model(inputs)
-            callbacks.on_forward_end()
+            self.callbacks.on_forward_end()
             loss=self.criterion(outputs,targets)
-            callbacks.on_loss_computed()
+            self.callbacks.on_loss_computed(loss=loss)
             if train_mode:
                 self.optimizer.zero_grad()
-                callbacks.on_backward_begin()
+                self.callbacks.on_backward_begin()
                 loss.backward()
-                callbacks.on_backward_end()
+                self.callbacks.on_backward_end()
                 self.optimizer.step()
-            callbacks.on_batch_end()
+            self.callbacks.on_batch_end(loss=loss)
+
+            
+    def _batch_data(self,batch):
+        print(type(batch))
+        inputs=batch[INPT_KEY].float().to(self.device)
+        targets=batch[TARG_KEY].float().to(self.device)
+        return inputs, targets
+        
 """
 
 
-
+ATTRIBUTE_ERROR="'{}' object has no attribute '{}'"
 class Callback(object):
     
+
     METHODS=[
         'on_train_begin',
         'on_epoch_begin',
@@ -68,10 +97,13 @@ class Callback(object):
         'on_backward_begin',
         'on_backward_end',
         'on_batch_end',
+        'on_validation_begin',
+        'on_validation_end',
         'on_epoch_end',
         'on_train_end',
     ]
     
+
     def __init__(self,**kwargs):
         self._set_properites(kwargs)
         
@@ -85,13 +117,17 @@ class Callback(object):
         if attr in Callback.METHODS:
             return (lambda **kw: None)
         else:
-            super(Callback,self).__getattr__(attr)
+            raise AttributeError(
+                    ATTRIBUTE_ERROR.format(
+                        self.__class__.__name__,
+                        attr ))
+
+
 
             
             
 class Callbacks(object):
     
-
     def __init__(self,callbacks):
         self.callbacks=callbacks
         for m in Callback.METHODS:
@@ -103,4 +139,6 @@ class Callbacks(object):
             for cb in self.callbacks:
                 getattr(cb,m)(**kwargs)
         setattr(self,m,cb_method)
+
+
         

@@ -36,7 +36,6 @@ def _init_history():
     }
 
 
-
 class Trainer(object):
 
 
