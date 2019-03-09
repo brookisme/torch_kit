@@ -74,10 +74,13 @@ def to_vector(arr):
     return np.array(arr).reshape(-1,1,1)
 
 
-def image_data(path):
+def image_data(path,window=None):
     with rio.open(path,'r') as src:
         profile=src.profile
-        image=src.read()
+        if window:
+            image=src.read(window=Window(*window))
+        else:
+            image=src.read()
     return image, profile
 
 
