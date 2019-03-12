@@ -1,7 +1,6 @@
 # __init__.py
 from .base import Callback, Callbacks
 from .history import History
-from .early_stopping import EarlyStopping
 
 
 
@@ -91,10 +90,17 @@ class Trainer(object):
             nb_epochs=1,
             accuracy_method=None,
             round_prediction=False,
+            early_stopping=False,
+            patience=0,
+            patience_start=0,
             initial_loss=9e12):
         self._reset_state(nb_epochs=nb_epochs)
         self.best_loss=initial_loss
         self.best_epoch=0
+        self.early_stopping=early_stopping
+        self.patience=patience
+        self.patience_start=patience_start
+        self.patience_count=0
         self.accuracy_method=accuracy_method or batch_accuracy(round_prediction)
         self.callbacks.on_train_begin(**self._state())
         for epoch in range(1,nb_epochs+1):
@@ -112,9 +118,11 @@ class Trainer(object):
                         loader=valid_loader,
                         mode='valid')
                     self.callbacks.on_validation_end(**self._state())
-                self._check_for_best(epoch=epoch,loss=self.val_loss)
+                stop_training=self._check_for_best(epoch=epoch,loss=self.val_loss)
             else:
-                self._check_for_best(epoch=epoch,loss=self.loss)
+                stop_training=self._check_for_best(epoch=epoch,loss=self.loss)
+            if stop_training: 
+                break
             self.callbacks.on_epochs_complete(**self._state())
         self.callbacks.on_train_end(**self._state())
 
@@ -197,6 +205,14 @@ class Trainer(object):
         if self.best_loss>loss:
             self.best_loss=loss
             self.best_epoch=epoch
+            self.patience_count=0
+            return False
+        elif self.early_stopping:
+            if epoch>=self.patience_start:
+                self.patience_count+=1
+            return self.patience<self.patience_count
+        else:
+            return False
 
 
 
