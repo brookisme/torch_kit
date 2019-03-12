@@ -16,6 +16,7 @@ class Callback(object):
         'on_validation_begin',
         'on_validation_end',
         'on_epoch_end',
+        'on_epochs_complete',
         'on_train_end',
     ]
     def __getattr__(self,attr):

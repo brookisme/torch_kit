@@ -1,6 +1,7 @@
 # __init__.py
 from .base import Callback, Callbacks
-from .core import History
+from .history import History
+from .early_stopping import EarlyStopping
 
 
 
@@ -71,14 +72,14 @@ class Trainer(object):
 
     def set_callbacks(self,
             callbacks=[],
+            force=False,
             history_callback=True,
-            noise_reducer=None,
-            force=False):
+            **history_kwargs):
         if force or (self.callbacks is False):
             if isinstance(callbacks,list):
                 callbacks=Callbacks(callbacks)
             if history_callback:
-                callbacks.append(History(noise_reducer=noise_reducer))
+                callbacks.append(History(**history_kwargs))
             self.callbacks=callbacks
         else:
             raise ValueError(CALLBACK_ERROR)
@@ -114,6 +115,7 @@ class Trainer(object):
                 self._check_for_best(epoch=epoch,loss=self.val_loss)
             else:
                 self._check_for_best(epoch=epoch,loss=self.loss)
+            self.callbacks.on_epochs_complete(**self._state())
         self.callbacks.on_train_end(**self._state())
 
 
