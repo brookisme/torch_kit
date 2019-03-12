@@ -27,8 +27,7 @@ COMPUTED_STATE_ATTRIBUTES=[
     'best_epoch']
 
 STATE_ATTRIBUTES=BASE_STATE_ATTRIBUTES+COMPUTED_STATE_ATTRIBUTES
-CB_ERROR='if passing Callbacks instance, default_callbacks should be False'
-
+CALLBACK_ERROR='Trainer: callbacks already set. use force=True to override'
 
 
 
@@ -56,6 +55,7 @@ class Trainer(object):
             force_cpu=False):
         self.device=h.get_device(force_cpu)
         self.model=model.to(self.device)
+        self.callbacks=False
         if criterion and optimizer:
             self.compile(criterion=criterion,optimizer=optimizer)
 
@@ -65,21 +65,29 @@ class Trainer(object):
         self.optimizer=optimizer
 
 
+    def set_callbacks(self,
+            callbacks=[],
+            history_callback=True,
+            noise_reducer=None,
+            force=False):
+        if force or (self.callbacks is False):
+            if isinstance(callbacks,list):
+                callbacks=Callbacks(callbacks)
+            if history_callback:
+                callbacks.append(History(noise_reducer=noise_reducer))
+            self.callbacks=callbacks
+        else:
+            raise ValueError(CALLBACK_ERROR)
+
+
     def fit(self,
             train_loader,
             valid_loader=None,
             nb_epochs=1,
-            callbacks=[],
-            history_callback=True,           
-            noise_reducer=None,
             accuracy_method=None,
             round_prediction=False,
             initial_loss=9e12):
         self._reset_state(nb_epochs=nb_epochs,best_loss=initial_loss)
-        self._set_callbacks(
-            callbacks,
-            history_callback,
-            noise_reducer)
         self.accuracy_method=accuracy_method or batch_accuracy(round_prediction)
         self.callbacks.on_train_begin(**self._state())
         for epoch in range(1,nb_epochs+1):
@@ -103,14 +111,6 @@ class Trainer(object):
     def _reset_state(self,**kwargs):
         for attr in STATE_ATTRIBUTES:
             setattr(self,attr,kwargs.get(attr,0))
-
-
-    def _set_callbacks(self,callbacks,history_callback,noise_reducer):
-        if isinstance(callbacks,list):
-            callbacks=Callbacks(callbacks)
-        if history_callback:
-            callbacks.append(History(noise_reducer=noise_reducer))
-        self.callbacks=callbacks
 
 
     def _state(self):
