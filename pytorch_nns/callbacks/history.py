@@ -49,21 +49,23 @@ class History(Callback):
             self._print('-'*75,None,True,True)
             self.nb_epochs=kwargs.get('nb_epochs')
 
-        
+
     def on_batch_end(self,**kwargs):
-        self._print_state(kwargs.get('mode'),kwargs,flush=False)
+        mode,loss,acc=self._mode_loss_acc(kwargs,is_batch=True)
+        self._print_state(mode,kwargs,flush=False)
         self._update_history(
-            mode=kwargs.get('mode'),
-            batch_loss=kwargs.get('batch_loss'),
-            batch_acc=kwargs.get('batch_acc'))
+            mode=mode,
+            batch_loss=loss,
+            batch_acc=acc)
     
 
     def on_epoch_end(self,**kwargs):
-        self._print_state(kwargs.get('mode'),kwargs,log=True)
+        mode,loss,acc=self._mode_loss_acc(kwargs)        
+        self._print_state(mode,kwargs,log=True)
         self._update_history(
-            mode=kwargs.get('mode'),
-            loss=kwargs.get('loss'),
-            acc=kwargs.get('acc'))
+            mode=mode,
+            loss=loss,
+            acc=acc)
         if self.save:
             h.save_pickle(self.history,self.path)
 
@@ -139,6 +141,21 @@ class History(Callback):
             return True
         else:
             return ((epoch-1)%self.noise_reducer is 0) or epoch==(self.nb_epochs)
+
+
+    def _mode_loss_acc(self,kwargs,is_batch=False):
+        mode=kwargs.get('mode')
+        if mode is 'valid':
+            prefix='val_'
+        else:
+            prefix=''
+        if is_batch:
+            batch_part='batch_'
+        else:
+            batch_part=''
+        loss=kwargs.get(f'{prefix}{batch_part}loss')
+        acc=kwargs.get(f'{prefix}{batch_part}acc')
+        return mode, loss, acc
 
 
     def _get_log_row(self,mode,kwargs,flush):
