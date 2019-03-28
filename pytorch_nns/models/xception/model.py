@@ -20,9 +20,9 @@ class XUnet(nn.Module):
             in_ch,
             out_ch,
             output_activation=None,
-            input_stride=2):
+            input_skip=True):
         super(XUnet,self).__init__()
-        self.in1=ConvBlock(in_ch,32,stride=input_stride,padding=1,depth=1)        
+        self.in1=ConvBlock(in_ch,32,stride=2,padding=1,depth=1)        
         self.in2=ConvBlock(32,64,padding=1,depth=1)
         self.d1=blocks.XDown(2,64,128,act_in=False,padding=1)
         self.d2=blocks.XDown(2,128,256,padding=1)
@@ -35,11 +35,10 @@ class XUnet(nn.Module):
         self.u1=blocks.XUp(2,256,128,padding=1)
         self.u0=blocks.XUp(2,128,64,padding=1)
         self.out2=ConvBlock(64,32,padding=1,depth=1)
-        if input_stride==2:
+        self.input_skip=input_skip
+        if input_skip:
             self.input_conv=ConvBlock(in_ch,16,padding=1,depth=2)
             self.uin=UNetUpBlock(32,32,out_up_ch=16,padding=1,depth=1)
-        else:
-            self.uin=False
         self.out1=ConvBlock(32,32,padding=1,depth=1)
         self.out0=ConvBlock(32,out_ch,kernel_size=1)
         self.output_activation=self._get_output_activation(
@@ -58,7 +57,7 @@ class XUnet(nn.Module):
         x=self.u1(x,skip1)
         x=self.u0(x,skip0)
         x=self.out2(x)
-        if self.uin:
+        if self.input_skip:
             skip=self.input_conv(inpt)
             x=self.uin(x,skip)
         x=self.out1(x)

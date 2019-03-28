@@ -90,10 +90,11 @@ class Up(UNetBlock):
             **config)
 
         
-    def forward(self, x, skip):
+    def forward(self, x, skip=None):
         x = self.up(x)
-        skip = self._crop(skip,x)
-        x = torch.cat([skip, x], dim=1)
+        if skip is not None:
+            skip = self._crop(skip,x)
+            x = torch.cat([skip, x], dim=1)
         return self.conv_block(x)
 
     

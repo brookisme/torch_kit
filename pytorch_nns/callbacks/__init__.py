@@ -115,16 +115,16 @@ class Trainer(object):
             tag=None,
             noisy=True):
         path=self._build_path(self.weights_dir,name,path,tag,timestamp)
-        if noisy: print("Trainer.save_weights: {path}")
+        if noisy: print(f"Trainer.save_weights: {path}")
         torch.save(self.model.state_dict(),path)
         return path
 
 
     def load_weights(self,path=None,noisy=True):
-        if not path and best:
+        if not path:
             path=self.best_weights_path
         if noisy:
-            print("Trainer.loading_weights: {self.best_weights_path}")
+            print(f"Trainer.loading_weights: {self.best_weights_path}")
         h.load_weights(
             self.model,
             self.best_weights_path,
