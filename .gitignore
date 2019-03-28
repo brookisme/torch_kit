@@ -13,6 +13,7 @@ man
 playground.py
 playground.sh
 playground/
+lr_finder.py
 
 # SUBLIME
 *sftp-config.json*

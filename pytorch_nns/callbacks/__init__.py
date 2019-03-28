@@ -1,6 +1,7 @@
 # __init__.py
 from .base import Callback, Callbacks
 from .history import History
+from .one_cycle import OneCycle
 
 
 
@@ -237,7 +238,7 @@ class Trainer(object):
 
     def _run_batch(self,batch_index,batch,mode):
         self._update_state(batch=batch_index)
-        self.callbacks.on_batch_begin()
+        self.callbacks.on_batch_begin(**self._state())
         inputs, targets=self._batch_data(batch)
         self.callbacks.on_forward_begin(**self._state())
         outputs=self.model(inputs)
