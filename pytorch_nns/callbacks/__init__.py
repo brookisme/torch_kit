@@ -6,11 +6,18 @@ from .history import History
 
 """ SKETCH OF TRAINING LOOP
 """
+import os
+from datetime import datetime
 import torch
 import pytorch_nns.helpers as h
 import pytorch_nns.metrics as metrics
 INPT_KEY='input'
 TARG_KEY='target'
+DEFAULT_NAME='train'
+WEIGHTS_DIR='weights'
+
+TS_FMT="%Y-%m-%dT%H:%M:%S"
+
 
 BASE_STATE_ATTRIBUTES=[
     'nb_epochs',
@@ -48,25 +55,27 @@ def batch_accuracy(round_prediction):
 
 
 
-
-
 class Trainer(object):
 
     def __init__(self,
             model,
             criterion=None,
             optimizer=None,
+            name=DEFAULT_NAME,
+            weights_dir=WEIGHTS_DIR,
             force_cpu=False):
         self.device=h.get_device(force_cpu)
         self.model=model.to(self.device)
+        self.name=name
+        self.weights_dir=weights_dir
         self.callbacks=False
         if criterion and optimizer:
             self.compile(criterion=criterion,optimizer=optimizer)
 
 
-    def compile(self,criterion,optimizer):
-        self.criterion=criterion
-        self.optimizer=optimizer
+    def compile(self,criterion=None,optimizer=None):
+        if criterion: self.criterion=criterion
+        if optimizer: self.optimizer=optimizer
 
 
     def set_callbacks(self,
@@ -78,10 +87,44 @@ class Trainer(object):
             if isinstance(callbacks,list):
                 callbacks=Callbacks(callbacks)
             if history_callback:
-                callbacks.append(History(**history_kwargs))
+                callbacks.add(History(**history_kwargs))
             self.callbacks=callbacks
         else:
             raise ValueError(CALLBACK_ERROR)
+
+
+    def report(self):
+        if self.timestamp:
+            print(f"Trainer.{self.name}.{self.timestamp}:")
+            print(f"\t best_epoch: {self.best_epoch}")
+            print(f"\t best_loss: {self.best_loss}")
+            if self.save_best:
+                print("\t",self.best_weights_path)
+            if self.save_all:
+                print("\t",self.weights_path)
+        else:
+            print("Trainer: No training to report")
+
+
+
+    def save_weights(self,
+            name=None,
+            path=None,
+            timestamp=True,
+            tag=None,
+            noisy=True):
+        path=self._build_path(self.weights_dir,name,path,tag,timestamp)
+        if noisy: print("Trainer.save_weights: {path}")
+        torch.save(self.model.state_dict(),path)
+        return path
+
+
+    def load_best(self,noisy=True):
+        print("Trainer.loading_weights: {self.best_weights_path}")
+        h.load_weights(
+            self.model,
+            self.best_weights_path,
+            device=self.device)
 
 
     def fit(self,
@@ -93,10 +136,15 @@ class Trainer(object):
             early_stopping=False,
             patience=0,
             patience_start=0,
+            save_best=True,
+            save_all=False,
             initial_loss=9e12):
+        self.timestamp=self._get_timestamp()
         self._reset_state(nb_epochs=nb_epochs)
         self.best_loss=initial_loss
         self.best_epoch=0
+        self.save_best=save_best
+        self.save_all=save_all
         self.early_stopping=early_stopping
         self.patience=patience
         self.patience_start=patience_start
@@ -118,15 +166,25 @@ class Trainer(object):
                         loader=valid_loader,
                         mode='valid')
                     self.callbacks.on_validation_end(**self._state())
-                stop_training=self._check_for_best(epoch=epoch,loss=self.val_loss)
+                is_best=self._check_for_best(epoch=epoch,loss=self.val_loss)
             else:
-                stop_training=self._check_for_best(epoch=epoch,loss=self.loss)
-            if stop_training: 
-                break
+                is_best=self._check_for_best(epoch=epoch,loss=self.loss)
+            if is_best:
+                if self.save_best:
+                    self.best_weights_path=self.save_weights(tag='best',noisy=False)
+            elif self.early_stopping:
+                if not self._check_patience(epoch):
+                    break
+            if self.save_all:
+                self.weights_path=self.save_weights(noisy=False)
             self.callbacks.on_epochs_complete(**self._state())
         self.callbacks.on_train_end(**self._state())
+        self.report()
 
 
+    #
+    #  INTERNAL
+    #
     def _reset_state(self,**kwargs):
         for attr in STATE_ATTRIBUTES:
             setattr(self,attr,kwargs.get(attr,0))
@@ -206,17 +264,35 @@ class Trainer(object):
             self.best_loss=loss
             self.best_epoch=epoch
             self.patience_count=0
-            return False
-        elif self.early_stopping:
-            if epoch>=self.patience_start:
-                self.patience_count+=1
-            return self.patience<self.patience_count
+            return True
         else:
             return False
 
 
+    def _check_patience(self,epoch):
+        if epoch>=self.patience_start:
+            self.patience_count+=1
+        return self.patience>=self.patience_count
 
 
+    def _build_path(self,directory,name,path,tag,timestamp):
+        if not path:
+            parts=[]
+            if directory:
+                parts.append(directory)
+                os.makedirs(directory,exist_ok=True)
+            parts.append(name or self.name)
+            path=os.path.join(*parts)
+            if tag:
+                path=f'{path}.{tag}'
+            if timestamp:
+                path=f'{path}.{self.timestamp}'
+            path=f'{path}.p'
+        return path
+
+
+    def _get_timestamp(self,none=False):
+        return datetime.now().strftime(TS_FMT)
 
 
 
