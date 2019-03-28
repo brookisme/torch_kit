@@ -43,13 +43,14 @@ CALLBACK_ERROR='Trainer: callbacks already set. use force=True to override'
 
 
 
-def batch_accuracy(round_prediction):
+def batch_accuracy(round_prediction=False,mask_value=None):
     def _calc(outputs,targets):
         return metrics.accuracy(
             outputs,
             targets,
             argmax=(not round_prediction),
             round_prediction=round_prediction,
+            mask_value=mask_value,
             axis=1)
     return _calc
 
@@ -119,8 +120,11 @@ class Trainer(object):
         return path
 
 
-    def load_best(self,noisy=True):
-        print("Trainer.loading_weights: {self.best_weights_path}")
+    def load_weights(self,path=None,noisy=True):
+        if not path and best:
+            path=self.best_weights_path
+        if noisy:
+            print("Trainer.loading_weights: {self.best_weights_path}")
         h.load_weights(
             self.model,
             self.best_weights_path,

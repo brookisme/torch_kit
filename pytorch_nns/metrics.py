@@ -11,7 +11,7 @@ ZERO_DENOMINATOR_VALUE=1.0
 
 
 def target_prediction_argmax(targ,pred,axis=0):
-    return h.argmax(pred,axis=axis),h.argmax(targ,axis=axis)
+    return h.argmax(targ,axis=axis),h.argmax(pred,axis=axis)
 
 
 def accuracy(
@@ -20,7 +20,8 @@ def accuracy(
         argmax=False,
         round_prediction=False,
         true_threshold=0.5,
-        axis=0):
+        axis=0,
+        mask_value=None):
     if argmax:
         targ,pred=target_prediction_argmax(targ,pred,axis=axis)
     elif round_prediction:
@@ -28,6 +29,9 @@ def accuracy(
         pred=pred+shift
         pred=torch.round(pred)
     test=(pred==targ)
+    if mask_value is not None:
+        msk=(targ!=mask_value)
+        test=test[msk]
     if torch.is_tensor(test):
         test=test.float()
     return test.mean()
