@@ -20,20 +20,22 @@ class XUnet(nn.Module):
             in_ch,
             out_ch,
             output_activation=None,
-            input_skip=True):
+            input_skip=True,
+            dropout=False):
         super(XUnet,self).__init__()
+        d1,d2,d3,d4,d5,d6,d7=self._get_dropouts(dropout)
         self.in1=ConvBlock(in_ch,32,stride=2,padding=1,depth=1)        
         self.in2=ConvBlock(32,64,padding=1,depth=1)
-        self.d1=blocks.XDown(2,64,128,act_in=False,padding=1)
-        self.d2=blocks.XDown(2,128,256,padding=1)
-        self.d3=blocks.XDown(2,256,728,padding=1)
+        self.d1=blocks.XDown(2,64,128,act_in=False,padding=1,dropout=d1)
+        self.d2=blocks.XDown(2,128,256,padding=1,dropout=d2)
+        self.d3=blocks.XDown(2,256,728,padding=1,dropout=d3)
         self.m=ResBlock(
-            block=blocks.SeparableBlock(3,728,padding=1),
+            block=blocks.SeparableBlock(3,728,padding=1,dropout=d4),
             multiplier=1.0,
             in_ch=728)
-        self.u2=blocks.XUp(2,728,256,padding=1)
-        self.u1=blocks.XUp(2,256,128,padding=1)
-        self.u0=blocks.XUp(2,128,64,padding=1)
+        self.u2=blocks.XUp(2,728,256,padding=1,dropout=d5)
+        self.u1=blocks.XUp(2,256,128,padding=1,dropout=d6)
+        self.u0=blocks.XUp(2,128,64,padding=1,dropout=d7)
         self.out2=ConvBlock(64,32,padding=1,depth=1)
         self.input_skip=input_skip
         if input_skip:
@@ -65,6 +67,13 @@ class XUnet(nn.Module):
         if self.output_activation:
             x=self.output_activation(x)
         return x
+
+
+    def _get_dropouts(self,dropout):
+        if isinstance(dropout,list):
+            return dropout
+        else:
+            return [dropout]*7
 
 
     def _get_output_activation(self,output_activation,out_ch):

@@ -13,7 +13,8 @@ class SeparableConv2d(nn.Module):
             padding=0,
             dilation=1,
             bias=False,
-            pointwise_in=True):
+            pointwise_in=True,
+            dropout=False):
         super(SeparableConv2d, self).__init__()
         out_ch=out_ch or in_ch
         self.pointwise_in=pointwise_in
@@ -39,6 +40,10 @@ class SeparableConv2d(nn.Module):
             dilation=1,
             groups=1,
             bias=bias)
+        if dropout:
+            self.dropout=nn.Dropout2d(p=dropout)
+        else:
+            self.dropout=False
 
 
     def forward(self, x):
@@ -48,6 +53,8 @@ class SeparableConv2d(nn.Module):
         else:
             x=self.conv(x)
             x=self.pointwise(x)
+        if self.dropout:
+            x=self.dropout(x)
         return x
 
 
