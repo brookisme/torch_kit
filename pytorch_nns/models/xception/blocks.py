@@ -152,6 +152,10 @@ class XDown(nn.Module):
             dilation=1,
             groups=1,
             bias=False)
+        if config.get('padding') is 0:
+            self.res_crop=int(depth/2)
+        else:
+            self.res_crop=False
         if res_batch_norm:
             self.res_bn=nn.BatchNorm2d(out_ch)
         else:
@@ -160,11 +164,17 @@ class XDown(nn.Module):
 
     def forward(self, x):
         skip=self.res_conv(x)
+        if self.res_crop:
+            skip=self._crop_skip(skip,self.res_crop)
         if self.res_bn:
             skip=self.res_bn(skip)
         x=self.separable_block(x)
         x=self.max_pooling(x)
         return skip.add_(x)
+
+
+    def _crop_skip(self,skip,crop):
+        return skip[:,:,crop:-crop,crop:-crop]
 
 
 
@@ -207,9 +217,10 @@ class XUp(nn.Module):
             **config)
 
 
-    def forward(self, x, skip):
+    def forward(self, x, skip=None):
         x = self.up(x)
-        x = torch.cat([skip, x], dim=1)
+        if skip is not None:
+            x = torch.cat([skip, x], dim=1)
         return self.separable_block(x)
 
 
