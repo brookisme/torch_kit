@@ -161,7 +161,7 @@ class Residule(nn.Module):
 
 
     def _crop(self,x,layers_out):
-        if not isinstance(self.crop,int):
+        if isinstance(self.crop,bool):
             # get cropping
             out_size=layers_out.size()[-1]
             x_size=x.size()[-1]
