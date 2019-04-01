@@ -73,20 +73,22 @@ class Up(UNetBlock):
             in_ch,
             out_ch=None,
             out_up_ch=None,
+            cb_in_ch=None,
             bilinear=False,
             crop=None,
             **config):
         super(Up, self).__init__(in_ch,out_ch)
         self.crop=crop
         out_ch=out_ch or in_ch//2
+        cb_in_ch=cb_in_ch or in_ch
         out_up_ch=out_up_ch or out_ch
         if bilinear:
             self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         else:
             self.up = nn.ConvTranspose2d(int(in_ch),int(out_up_ch),2,stride=2)
         self.conv_block=Conv(
-            in_ch=in_ch,
-            out_ch=out_ch,
+            in_ch=int(cb_in_ch),
+            out_ch=int(out_ch),
             **config)
 
         

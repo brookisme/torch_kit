@@ -17,6 +17,7 @@ class Conv(nn.Module):
         stride (int <1>): Stride
         padding (int|str <0>): int or same if padding='same' -> int((kernel_size-1)/2) 
         batch_norm (bool <True>): Add batch norm after conv
+        dropout (False|float <False>): Dropout to be applied after Conv
         act (str <'relu'>): Method name of activation function after each Conv Layer
         act_config (dict <{}>): Kwargs for activation function after each Conv Layer
     """
@@ -47,6 +48,7 @@ class Conv(nn.Module):
             stride=1, 
             padding=PADDING, 
             batch_norm=True,
+            dropout=False,
             act='ReLU',
             act_config={}):
         super(Conv, self).__init__()
@@ -61,6 +63,7 @@ class Conv(nn.Module):
             stride,
             padding,
             batch_norm,
+            dropout,
             act,
             act_config)
 
@@ -78,6 +81,7 @@ class Conv(nn.Module):
             stride,
             padding,
             batch_norm,
+            dropout,
             act,
             act_config):
         layers=[]
@@ -98,6 +102,8 @@ class Conv(nn.Module):
                 layers.append(nn.BatchNorm2d(self.out_ch))
             if act:
                 layers.append(self._act_layer(act)(**act_config))
+            if dropout:
+                layers.append(nn.Dropout2d(p=dropout))
         return nn.Sequential(*layers)
 
         

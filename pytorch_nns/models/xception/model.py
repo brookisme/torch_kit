@@ -6,6 +6,8 @@ from pytorch_nns.models.unet.blocks import Up as UNetUpBlock
 import pytorch_nns.models.xception.blocks as blocks
 
 
+ACT_ERROR_TMPL='[ERROR] unet: {} not implemented via str'
+
 class XUnet(nn.Module):
     r""" XUnet
     
@@ -20,62 +22,128 @@ class XUnet(nn.Module):
             in_ch,
             out_ch,
             output_activation=None,
-            input_skip=True,
             padding=1,
-            dropout=False):
+            input_skip=True,
+            entry_conv_ch=64,
+            down_channels=[128,256,512],
+            bottleneck_depth=3,
+            dropouts={}):
         super(XUnet,self).__init__()
-        d1,d2,d3,d4,d5,d6,d7=self._get_dropouts(dropout)
-        self.in1=ConvBlock(in_ch,32,stride=2,padding=1,depth=1)        
-        self.in2=ConvBlock(32,64,padding=1,depth=1)
-        self.d1=blocks.XDown(2,64,128,act_in=False,padding=padding,dropout=d1)
-        self.d2=blocks.XDown(2,128,256,padding=padding,dropout=d2)
-        self.d3=blocks.XDown(2,256,728,padding=padding,dropout=d3)
-        self.m=ResBlock(
-            block=blocks.SeparableBlock(3,728,padding=padding,dropout=d4),
-            multiplier=1.0,
-            in_ch=728,
-            crop=(padding==0))
-        self.u2=blocks.XUp(2,728,256,padding=padding,dropout=d5)
-        self.u1=blocks.XUp(2,256,128,padding=padding,dropout=d6)
-        self.u0=blocks.XUp(2,128,64,padding=padding,dropout=d7)
-        self.out2=ConvBlock(64,32,padding=1,depth=1)
+        # entry
+        self.entry_conv=self._entry_conv(
+            in_ch,
+            entry_conv_ch,
+            dropout=dropouts.get('entry'))
+        # unet
+        self.down_blocks=self._down_blocks(
+            entry_conv_ch,
+            down_channels,
+            dropout=dropouts.get('down'))
+        self.bottleneck=self._bottleneck(
+            bottleneck_depth,
+            down_channels[-1],
+            dropout=dropouts.get('bottleneck'))
+        self.up_blocks=self._up_blocks(
+            down_channels[::-1],
+            entry_conv_ch,
+            dropout=dropouts.get('up'))
+        # exit
+        self.exit1=ConvBlock(
+            entry_conv_ch,
+            entry_conv_ch//2,
+            padding=1,
+            depth=1,
+            dropout=dropouts.get('exit1'))
         self.input_skip=input_skip
-        if input_skip:
-            self.input_conv=ConvBlock(in_ch,16,padding=1,depth=2)
-            self.uin=UNetUpBlock(32,32,out_up_ch=16,padding=1,depth=1)
-        self.out1=ConvBlock(32,32,padding=1,depth=1)
-        self.out0=ConvBlock(32,out_ch,kernel_size=1)
+        if self.input_skip:
+            self.input_conv=ConvBlock(
+                in_ch,
+                entry_conv_ch//4,
+                padding=1,
+                depth=2,
+                dropout=dropouts.get('input_conv'))
+            cb_in_ch=entry_conv_ch//2
+        else:
+            cb_in_ch=entry_conv_ch//4
+        self.exit2=UNetUpBlock(
+            entry_conv_ch//2,
+            cb_in_ch=cb_in_ch,
+            padding=1,
+            depth=1,
+            dropout=dropouts.get('exit2'))
+        # out
+        self.out=ConvBlock(
+            entry_conv_ch//4,
+            out_ch,
+            kernel_size=1,
+            dropout=dropouts.get('out'))
         self.output_activation=self._get_output_activation(
             output_activation,
             out_ch)
 
 
     def forward(self,inpt):
-        x=self.in1(inpt)
-        skip0=self.in2(x)
-        skip1=self.d1(skip0)
-        skip2=self.d2(skip1)
-        x=self.d3(skip2)
-        x=self.m(x)
-        x=self.u2(x,skip2)
-        x=self.u1(x,skip1)
-        x=self.u0(x,skip0)
-        x=self.out2(x)
+        skips=[self.entry_conv(inpt)]
+        for block in self.down_blocks:
+            skips.append(block(skips[-1]))
+        x=self.bottleneck(skips.pop())
+        skips.reverse()
+        for skip,block in zip(skips,self.up_blocks):
+            x=block(x,skip)
+        x=self.exit1(x)
         if self.input_skip:
             skip=self.input_conv(inpt)
-            x=self.uin(x,skip)
-        x=self.out1(x)
-        x=self.out0(x)
+        else:
+            skip=None
+        x=self.exit2(x,skip)
+        x=self.out(x)
         if self.output_activation:
             x=self.output_activation(x)
         return x
 
 
-    def _get_dropouts(self,dropout):
-        if isinstance(dropout,list):
-            return dropout
-        else:
-            return [dropout]*7
+    def _entry_conv(self,in_ch,entry_conv_ch,dropout):
+        c1=ConvBlock(in_ch,entry_conv_ch//2,stride=2,padding=1,depth=1,dropout=dropout)
+        c2=ConvBlock(entry_conv_ch//2,entry_conv_ch,padding=1,depth=1,dropout=dropout)
+        return nn.Sequential(c1,c2)
+
+
+    def _down_blocks(self,in_ch,down_channels,padding=1,dropout=False):
+        act_in=False
+        layers=[]
+        if not isinstance(dropout,list):
+            dropout=[dropout]*len(down_channels)
+        for ch,drp in zip(down_channels,dropout):
+            blk=blocks.XDown(2,in_ch,ch,act_in=act_in,padding=padding,dropout=drp)
+            layers.append(blk)
+            in_ch=ch
+            act_in=True
+        return nn.ModuleList(layers)
+
+
+    def _bottleneck(self,depth,in_ch,padding=1,dropout=False):
+            return ResBlock(
+                block=blocks.SeparableBlock(
+                    depth=depth,
+                    in_ch=in_ch,
+                    padding=padding,
+                    dropout=dropout),
+                multiplier=1.0,
+                in_ch=in_ch,
+                crop=(padding==0))
+
+
+    def  _up_blocks(self,up_channels,out_ch,padding=1,dropout=False):
+        up_channels.append(out_ch)
+        layers=[]
+        nb_layers=len(up_channels)-1
+        if not isinstance(dropout,list):
+            dropout=[dropout]*nb_layers
+        for i in range(nb_layers):
+            in_ch=up_channels[i]
+            out_ch=up_channels[i+1]
+            layers.append(blocks.XUp(2,in_ch,out_ch,padding=padding,dropout=dropout[i]))
+        return nn.ModuleList(layers)
 
 
     def _get_output_activation(self,output_activation,out_ch):
@@ -85,7 +153,7 @@ class XUnet(nn.Module):
             elif output_activation.lower()=='softmax':
                 act=nn.Softmax(dim=1)
             else:
-                raise ValueError('[ERROR] unet: {output_activation} not implemented via str')
+                raise ValueError(ACT_ERROR_TMPL.format(output_activation))
         elif output_activation is None:
             if out_ch==1:
                 act=nn.Sigmoid()
