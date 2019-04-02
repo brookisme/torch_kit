@@ -71,19 +71,20 @@ class SeparableBlock(nn.Module):
             act='ReLU',
             act_config={},
             act_in=True,
+            padding=1,
             **config):
         super(SeparableBlock, self).__init__()
         self.in_ch=in_ch
         self.out_ch=out_ch or in_ch
         self.batch_norm=batch_norm
-        self.layers=self._get_layers(depth,act,act_config,act_in,config)
+        self.layers=self._get_layers(depth,act,act_config,act_in,padding,config)
 
 
     def forward(self, x):
         return self.layers(x)
 
 
-    def _get_layers(self,depth,act,act_config,act_in,config):
+    def _get_layers(self,depth,act,act_config,act_in,padding,config):
         layers=[]
         for i in range(depth):
             if i or act_in:
@@ -92,6 +93,7 @@ class SeparableBlock(nn.Module):
                 SeparableConv2d(
                     self._in_ch(i),
                     self.out_ch,
+                    padding=padding,
                     **config))
             if self.batch_norm:
                 layers.append(nn.BatchNorm2d(self.out_ch))
@@ -129,6 +131,7 @@ class XDown(nn.Module):
             act_in=True,
             pool_kernel=3,
             pool_stride=2,
+            padding=1,
             **config):
         super(XDown, self).__init__()
         self.separable_block=SeparableBlock(
@@ -139,6 +142,7 @@ class XDown(nn.Module):
             act=act,
             act_config=act_config,
             act_in=act_in,
+            padding=padding,
             **config)
         self.max_pooling=nn.MaxPool2d(
             pool_kernel, 
@@ -152,8 +156,8 @@ class XDown(nn.Module):
             dilation=1,
             groups=1,
             bias=False)
-        if config.get('padding') is 0:
-            self.res_crop=int(depth/2)
+        if padding is 0:
+            self.res_crop=depth//2
         else:
             self.res_crop=False
         if res_batch_norm:
@@ -181,6 +185,17 @@ class XDown(nn.Module):
 class XUp(nn.Module):
 
 
+    @staticmethod
+    def cropping(skip_size,size):
+        r""" calculates crop size
+
+        Args:
+            skip_size (int): size (=h=w) of skip connection
+            size (int): size (=h=w) of input
+        """
+        return int((skip_size-size)//2)
+
+
     def __init__(self,
             depth,
             in_ch,
@@ -192,9 +207,13 @@ class XUp(nn.Module):
             pool_kernel=3,
             pool_stride=2,
             bilinear=False,
+            crop=None,
+            padding=1,
             **config):
         super(XUp, self).__init__()
         out_ch=out_ch or in_ch
+        self.crop=crop
+        self.padding=padding
         if bilinear:
             self.up = nn.Upsample(
                 scale_factor=2, 
@@ -207,20 +226,29 @@ class XUp(nn.Module):
                 2,
                 stride=2)
         self.separable_block=SeparableBlock(
-            depth = depth,
-            in_ch = out_ch*2,
-            out_ch = out_ch,
-            batch_norm = batch_norm,
-            act = act,
-            act_config = act_config,
-            act_in = act_in,
+            depth=depth,
+            in_ch=out_ch*2,
+            out_ch=out_ch,
+            batch_norm=batch_norm,
+            act=act,
+            act_config=act_config,
+            act_in=act_in,
+            padding=padding,
             **config)
 
 
     def forward(self, x, skip=None):
         x = self.up(x)
         if skip is not None:
+            skip = self._crop(skip,x)
             x = torch.cat([skip, x], dim=1)
         return self.separable_block(x)
 
+
+    def _crop(self,skip,x):
+        if self.padding is 0:
+            if self.crop is None:
+                self.crop=self.cropping(skip.size()[-1],x.size()[-1])
+            skip=skip[:,:,self.crop:-self.crop,self.crop:-self.crop]
+        return skip
 

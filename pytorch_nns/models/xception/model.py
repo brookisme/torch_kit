@@ -33,33 +33,37 @@ class XUnet(nn.Module):
         self.entry_conv=self._entry_conv(
             in_ch,
             entry_conv_ch,
+            padding=1,
             dropout=dropouts.get('entry'))
         # unet
         self.down_blocks=self._down_blocks(
             entry_conv_ch,
             down_channels,
+            padding=padding,
             dropout=dropouts.get('down'))
         self.bottleneck=self._bottleneck(
             bottleneck_depth,
             down_channels[-1],
+            padding=padding,
             dropout=dropouts.get('bottleneck'))
         self.up_blocks=self._up_blocks(
             down_channels[::-1],
             entry_conv_ch,
+            padding=padding,
             dropout=dropouts.get('up'))
         # exit
         self.exit1=ConvBlock(
             entry_conv_ch,
             entry_conv_ch//2,
-            padding=1,
             depth=1,
+            padding=padding,
             dropout=dropouts.get('exit1'))
         self.input_skip=input_skip
         if self.input_skip:
             self.input_conv=ConvBlock(
                 in_ch,
                 entry_conv_ch//4,
-                padding=1,
+                padding=padding,
                 depth=2,
                 dropout=dropouts.get('input_conv'))
             cb_in_ch=entry_conv_ch//2
@@ -68,7 +72,7 @@ class XUnet(nn.Module):
         self.exit2=UNetUpBlock(
             entry_conv_ch//2,
             cb_in_ch=cb_in_ch,
-            padding=1,
+            padding=padding,
             depth=1,
             dropout=dropouts.get('exit2'))
         # out
@@ -102,13 +106,24 @@ class XUnet(nn.Module):
         return x
 
 
-    def _entry_conv(self,in_ch,entry_conv_ch,dropout):
-        c1=ConvBlock(in_ch,entry_conv_ch//2,stride=2,padding=1,depth=1,dropout=dropout)
-        c2=ConvBlock(entry_conv_ch//2,entry_conv_ch,padding=1,depth=1,dropout=dropout)
+    def _entry_conv(self,in_ch,entry_conv_ch,padding,dropout):
+        c1=ConvBlock(
+            in_ch,
+            entry_conv_ch//2,
+            stride=2,
+            padding=padding,
+            depth=1,
+            dropout=dropout)
+        c2=ConvBlock(
+            entry_conv_ch//2,
+            entry_conv_ch,
+            padding=padding,
+            depth=1,
+            dropout=dropout)
         return nn.Sequential(c1,c2)
 
 
-    def _down_blocks(self,in_ch,down_channels,padding=1,dropout=False):
+    def _down_blocks(self,in_ch,down_channels,padding,dropout=False):
         act_in=False
         layers=[]
         if not isinstance(dropout,list):
@@ -121,7 +136,7 @@ class XUnet(nn.Module):
         return nn.ModuleList(layers)
 
 
-    def _bottleneck(self,depth,in_ch,padding=1,dropout=False):
+    def _bottleneck(self,depth,in_ch,padding,dropout=False):
             return ResBlock(
                 block=blocks.SeparableBlock(
                     depth=depth,
@@ -133,7 +148,7 @@ class XUnet(nn.Module):
                 crop=(padding==0))
 
 
-    def  _up_blocks(self,up_channels,out_ch,padding=1,dropout=False):
+    def  _up_blocks(self,up_channels,out_ch,padding,dropout=False):
         up_channels.append(out_ch)
         layers=[]
         nb_layers=len(up_channels)-1
