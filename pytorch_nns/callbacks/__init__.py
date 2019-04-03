@@ -3,6 +3,8 @@ from .base import Callback, Callbacks
 from .history import History
 from .one_cycle import OneCycle
 
+import numpy as np
+import pytorch_nns.helpers as H
 
 
 """ SKETCH OF TRAINING LOOP
@@ -44,12 +46,13 @@ CALLBACK_ERROR='Trainer: callbacks already set. use force=True to override'
 
 
 
-def batch_accuracy(round_prediction=False,mask_value=None):
+def batch_accuracy(pred_argmax=False,round_prediction=False,mask_value=None):
     def _calc(outputs,targets):
         return metrics.accuracy(
             outputs,
             targets,
-            argmax=(not round_prediction),
+            pred_argmax=pred_argmax,
+            argmax=((not round_prediction) and (not pred_argmax)),
             round_prediction=round_prediction,
             mask_value=mask_value,
             axis=1)
@@ -259,8 +262,10 @@ class Trainer(object):
 
             
     def _batch_data(self,batch):
-        inputs=batch[INPT_KEY].float().to(self.device)
-        targets=batch[TARG_KEY].float().to(self.device)
+        inputs=batch[INPT_KEY].to(self.device)
+        targets=batch[TARG_KEY].to(self.device)
+        if inputs.type()=='torch.DoubleTensor':
+            inputs=inputs.float()
         return inputs, targets
 
 
