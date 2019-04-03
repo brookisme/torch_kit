@@ -4,6 +4,33 @@ import pytorch_nns.functional as f
 
 
 
+class MaskedLoss(nn.Module):
+    """ masked_loss
+
+        negative-log-likelyhood or cross-entropy loss with mask
+
+        Args:
+            * mask_value<int|array|None>: keep values where target!=mask
+            * loss_type<str['nll']>: nll or ce
+            * device<str|None>: device-name. if exists, send weights to specified device
+    """
+    def __init__(self,mask_value=None,loss_type='nll',device=None):
+        super(MaskedLoss, self).__init__()
+        if loss_type=='nll':
+            self.loss_layer=nn.NLLLoss(reduction='none')
+        else:
+            self.loss_layer=nn.CrossEntropyLoss(reduction='none')
+        self.mask_value=mask_value
+
+
+    def forward(self, inpt, targ):
+        loss=self.loss_layer(inpt,targ)
+        if self.mask_value is not None:
+            mask=(targ!=self.mask_value)
+            loss=loss[mask]
+        return loss.mean()
+        
+
 class WeightedCategoricalCrossentropy(nn.Module):
     """ weighted_categorical_crossentropy
         
