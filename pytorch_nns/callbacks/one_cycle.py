@@ -96,7 +96,13 @@ class OneCycle(Callback):
     def _update_mom(self,mom):
         for grp in self.optimizer.param_groups:
             if isinstance(self.momentum_index,int):
-                grp[self.momentum_key][self.momentum_index]=mom
+                grp[self.momentum_key]=self._replace_index(
+                        self.momentum_index,
+                        mom,
+                        grp[self.momentum_key])
             else:
                 grp[self.momentum_key]=mom
 
+
+    def _replace_index(self,ri,r,lst):
+        return [ v if i!=ri else r for i,v in enumerate(lst)]
