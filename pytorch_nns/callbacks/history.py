@@ -8,6 +8,7 @@ TS_FMT="%Y-%m-%dT%H:%M:%S"
 FLOAT_TMPL='{:>.5f}'
 ROW_TMPL='{:^10} {:^10} | {:^10} {:^10} | {:^10} {:^10}'
 DEFAULT_NAME='history'
+DEFAULT_DIR='history'
 DEFAULT_LOG_DIR='logs'
 
 class History(Callback):
@@ -25,7 +26,7 @@ class History(Callback):
     def __init__(self,
             save=False,
             name=DEFAULT_NAME,
-            history_dir=None,
+            history_dir=DEFAULT_DIR,
             noise_reducer=None,
             log=True,
             log_header=True,
@@ -103,7 +104,7 @@ class History(Callback):
             if isinstance(log,str):
                 log_filename=log
             else:
-                log_filename=f'train_{self.train_start_timestamp}.log'
+                log_filename=f'{self.name}_{self.train_start_timestamp}.log'
             if log_dir:
                 os.makedirs(log_dir,exist_ok=True)
                 log_filename=f'{log_dir}/{log_filename}'
