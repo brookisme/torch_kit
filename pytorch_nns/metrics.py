@@ -10,20 +10,20 @@ ZERO_DENOMINATOR_VALUE=1.0
 
 
 
-def target_prediction_argmax(targ,pred,axis=0):
-    return h.argmax(targ,axis=axis),h.argmax(pred,axis=axis)
-
-
 def accuracy(
         pred,
         targ,
         argmax=False,
+        pred_argmax=False,
         round_prediction=False,
         true_threshold=0.5,
         axis=0,
         mask_value=None):
     if argmax:
-        targ,pred=target_prediction_argmax(targ,pred,axis=axis)
+        targ=h.argmax(targ,axis=axis)        
+        pred=h.argmax(pred,axis=axis)
+    elif pred_argmax:
+        pred=h.argmax(pred,axis=axis)
     elif round_prediction:
         shift=true_threshold-0.5
         pred=pred+shift
