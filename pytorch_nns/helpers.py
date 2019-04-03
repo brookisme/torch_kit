@@ -8,6 +8,7 @@ from datetime import datetime
 #
 # CONFIG
 #
+ACT_ERROR_TMPL='[ERROR] unet: {} not implemented via str'
 TIMESTAMP_FMT="%H:%M:%S (%Y-%m-%d)"
 CUDA='cuda'
 CPU='cpu'
@@ -118,6 +119,31 @@ def get_model(
         print("weight_initializer: ",weight_initializer)
         model.apply(weight_initializer)
     return model
+
+
+def get_output_activation(output_activation=None,out_ch=None,**act_kwargs):
+    if isinstance(output_activation,str):
+        if output_activation.lower()=='sigmoid':
+            act=nn.Sigmoid()
+        elif output_activation.lower()=='softmax':
+            act=nn.Softmax(dim=1)
+        elif output_activation.lower()=='log_softmax':
+            act=nn.LogSoftmax(dim=1)
+        else:
+            raise ValueError(ACT_ERROR_TMPL.format(output_activation))
+    elif output_activation is None:
+        if out_ch==1:
+            act=nn.Sigmoid()
+        else:
+            act=nn.Softmax(dim=1)
+    elif output_activation is False:
+        act=False
+    else:
+        if callable(output_activation()):
+            act=output_activation(**act_kwargs)
+        else:
+            act
+    return act 
 
 
 def freeze_layer(layer):
