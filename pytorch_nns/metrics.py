@@ -37,6 +37,19 @@ def accuracy(
     return test.mean()
 
 
+def batch_accuracy(pred_argmax=False,round_prediction=False,mask_value=None):
+    def _calc(outputs,targets):
+        return metrics.accuracy(
+            outputs,
+            targets,
+            pred_argmax=pred_argmax,
+            argmax=((not round_prediction) and (not pred_argmax)),
+            round_prediction=round_prediction,
+            mask_value=mask_value,
+            axis=1)
+    return _calc
+    
+
 def confusion(targ,pred,labels=None,nb_categories=None,argmax=False,axis=0):
     if argmax:
         if not nb_categories:
