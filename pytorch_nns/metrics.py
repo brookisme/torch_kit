@@ -39,7 +39,7 @@ def accuracy(
 
 def batch_accuracy(pred_argmax=False,round_prediction=False,mask_value=None):
     def _calc(outputs,targets):
-        return metrics.accuracy(
+        return accuracy(
             outputs,
             targets,
             pred_argmax=pred_argmax,

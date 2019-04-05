@@ -33,7 +33,7 @@ COMPUTED_STATE_ATTRIBUTES=[
     'val_acc' ]
 STATE_ATTRIBUTES=BASE_STATE_ATTRIBUTES+COMPUTED_STATE_ATTRIBUTES
 CALLBACK_ERROR='Trainer: callbacks already set. use force=True to override'
-
+DOUBLE='DoubleTensor'
 
 
 
@@ -244,8 +244,10 @@ class Trainer(object):
     def _batch_data(self,batch):
         inputs=batch[INPT_KEY].to(self.device)
         targets=batch[TARG_KEY].to(self.device)
-        if inputs.type()=='torch.DoubleTensor':
+        if DOUBLE in inputs.type():
             inputs=inputs.float()
+        if DOUBLE in targets.type():
+            targets=targets.float()
         return inputs, targets
 
 
