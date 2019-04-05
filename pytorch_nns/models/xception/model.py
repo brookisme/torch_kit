@@ -1,12 +1,12 @@
 import torch.nn as nn
 import torch.nn.functional as F
+import pytorch_nns.helpers as h
 from pytorch_nns.models.shared.blocks import Conv as ConvBlock
 from pytorch_nns.models.shared.blocks import Residule as ResBlock
 from pytorch_nns.models.unet.blocks import Up as UNetUpBlock
 import pytorch_nns.models.xception.blocks as blocks
 
 
-ACT_ERROR_TMPL='[ERROR] unet: {} not implemented via str'
 
 class XUnet(nn.Module):
     r""" XUnet
@@ -22,6 +22,7 @@ class XUnet(nn.Module):
             in_ch,
             out_ch,
             output_activation=None,
+            output_type=None,
             padding=1,
             input_skip=True,
             entry_conv_ch=64,
@@ -76,17 +77,20 @@ class XUnet(nn.Module):
             depth=1,
             dropout=dropouts.get('exit2'))
         # out
+        self.output_type=output_type
         self.out=ConvBlock(
             entry_conv_ch//4,
             out_ch,
             kernel_size=1,
             dropout=dropouts.get('out'))
-        self.output_activation=self._get_output_activation(
+        self.output_activation=h.get_output_activation(
             output_activation,
             out_ch)
 
 
+
     def forward(self,inpt):
+        inpt=inpt.float()
         skips=[self.entry_conv(inpt)]
         for block in self.down_blocks:
             skips.append(block(skips[-1]))
@@ -101,6 +105,7 @@ class XUnet(nn.Module):
             skip=None
         x=self.exit2(x,skip)
         x=self.out(x)
+        x=self._require_type(x)
         if self.output_activation:
             x=self.output_activation(x)
         return x
@@ -161,24 +166,14 @@ class XUnet(nn.Module):
         return nn.ModuleList(layers)
 
 
-    def _get_output_activation(self,output_activation,out_ch):
-        if isinstance(output_activation,str):
-            if output_activation.lower()=='sigmoid':
-                act=nn.Sigmoid()
-            elif output_activation.lower()=='softmax':
-                act=nn.Softmax(dim=1)
-            else:
-                raise ValueError(ACT_ERROR_TMPL.format(output_activation))
-        elif output_activation is None:
-            if out_ch==1:
-                act=nn.Sigmoid()
-            else:
-                act=nn.Softmax(dim=1)
-        elif output_activation is False:
-            act=False
-        else:
-            if callable(output_activation()):
-                act=output_activation()
-            else:
-                act
-        return act  
+    def _require_type(self,x):
+        if self.output_type=='float':
+            x=x.float()
+        elif self.output_type=='double':
+            x=x.double()        
+        elif self.output_type=='long':
+            x=x.long()
+        return x
+
+
+ 

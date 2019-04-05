@@ -93,7 +93,7 @@ class History(Callback):
         self.save=save
         self.name=name
         if save:
-            self.path=f'{name}.p'
+            self.path=f'{name}.{self.train_start_timestamp}.p'
             if history_dir:
                 os.makedirs(history_dir,exist_ok=True)
                 self.path=f'{history_dir}/{self.path}'
