@@ -28,7 +28,10 @@ def accuracy(
         shift=true_threshold-0.5
         pred=pred+shift
         pred=torch.round(pred)
-    test=(pred==targ)
+    if argmax or pred_argmax or round_prediction:
+        test=(pred==targ)
+    else:
+        test=1-torch.pow((pred-targ),2)
     if mask_value is not None:
         msk=(targ!=mask_value)
         test=test[msk]
@@ -37,13 +40,19 @@ def accuracy(
     return test.mean()
 
 
-def batch_accuracy(pred_argmax=False,round_prediction=False,mask_value=None):
+def batch_accuracy(
+        pred_argmax=False,
+        round_prediction=False,
+        mask_value=None,
+        argmax=None):
+    if argmax is None:
+        argmax=((not round_prediction) and (not pred_argmax))
     def _calc(outputs,targets):
         return accuracy(
             outputs,
             targets,
             pred_argmax=pred_argmax,
-            argmax=((not round_prediction) and (not pred_argmax)),
+            argmax=argmax,
             round_prediction=round_prediction,
             mask_value=mask_value,
             axis=1)
