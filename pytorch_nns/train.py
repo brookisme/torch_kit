@@ -83,6 +83,7 @@ class Trainer(object):
             print(f"Trainer.{self.name}.{self.timestamp}:")
             print(f"\t best_epoch: {self.best_epoch}")
             print(f"\t best_loss: {self.best_loss}")
+            print(f"\t best_acc: {self.best_acc}")
             if self.save_best:
                 print("\t",self.best_weights_path)
             if self.save_all:
@@ -130,6 +131,7 @@ class Trainer(object):
         self.timestamp=self._get_timestamp()
         self._reset_state(nb_epochs=nb_epochs)
         self.best_loss=initial_loss
+        self.best_acc=-1
         self.best_epoch=0
         self.save_best=save_best
         self.save_all=save_all
@@ -154,9 +156,12 @@ class Trainer(object):
                         loader=valid_loader,
                         mode='valid')
                     self.callbacks.on_validation_end(**self._state())
-                is_best=self._check_for_best(epoch=epoch,loss=self.val_loss)
+                is_best=self._check_for_best(
+                    epoch=epoch,
+                    loss=self.val_loss,
+                    acc=self.val_acc)
             else:
-                is_best=self._check_for_best(epoch=epoch,loss=self.loss)
+                is_best=self._check_for_best(epoch=epoch,loss=self.loss,acc=self.acc)
             if is_best:
                 if self.save_best:
                     self.best_weights_path=self.save_weights(tag='best',noisy=False)
@@ -251,10 +256,11 @@ class Trainer(object):
         return inputs, targets
 
 
-    def _check_for_best(self,epoch,loss):
+    def _check_for_best(self,epoch,loss,acc):
         if self.best_loss>loss:
-            self.best_loss=loss
             self.best_epoch=epoch
+            self.best_loss=loss
+            self.best_acc=acc
             self.patience_count=0
             return True
         else:
