@@ -62,6 +62,7 @@ def weighted_categorical_crossentropy(inpt,targ,weights):
     weights=h.to_tensor(weights).float()
     inpt=inpt/(inpt.sum(1,True)+EPS)
     inpt=torch.clamp(inpt, EPS, 1. - EPS)
+    targ=targ.unsqueeze(dim=1).float()
     losses=((targ * torch.log(inpt))).float()
     weighted_losses_transpose=weights*losses.transpose(1,-1)
     return -weighted_losses_transpose.mean()*targ.size(1)

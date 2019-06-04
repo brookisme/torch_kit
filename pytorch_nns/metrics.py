@@ -8,7 +8,12 @@ VALIDITY_BOUND=1e-3
 INVALID_VALUE=False
 ZERO_DENOMINATOR_VALUE=1.0
 
-
+import torch
+def u(a):
+    try:
+        return np.unique(a)
+    except:
+        return torch.unique(a)
 
 def accuracy(
         pred,
@@ -29,6 +34,8 @@ def accuracy(
         pred=pred+shift
         pred=torch.round(pred)
     if argmax or pred_argmax or round_prediction:
+        pred=pred.long()
+        targ=targ.long()
         test=(pred==targ)
     else:
         test=1-torch.pow((pred-targ),2)

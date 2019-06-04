@@ -4,7 +4,7 @@ import pytorch_nns.helpers as h
 from pytorch_nns.models.shared.blocks import Conv as ConvBlock
 from pytorch_nns.models.shared.blocks import Residule as ResBlock
 from pytorch_nns.models.unet.blocks import Up as UNetUpBlock
-import pytorch_nns.models.xception.blocks as blocks
+import pytorch_nns.models.xunet.blocks as blocks
 
 
 
