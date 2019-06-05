@@ -19,7 +19,7 @@ class Xception(nn.Module):
         exit_xblock_ch: 1024
         exit_stack_chs: [1536,1536,2048]
         xblock_depth: 3
-        
+
     Properties:
     Links:
 
@@ -36,9 +36,10 @@ class Xception(nn.Module):
         super(Xception,self).__init__()
         self.entry_block=blocks.EntryBlock(in_ch,entry_ch,entry_out_ch)
         self.xblocks=self._xblocks(entry_out_ch,xblock_chs,xblock_depth)
-        self.bottleneck=blocks.SeparableResStack(
-            ch=xblock_chs[-1],
-            depth=bottleneck_depth )
+        self.bottleneck=blocks.SeparableStack(
+            in_ch=xblock_chs[-1],
+            depth=bottleneck_depth,
+            res=True )
         self.exit_xblock=blocks.XBlock(
                 in_ch=xblock_chs[-1],
                 out_ch=exit_xblock_ch,
