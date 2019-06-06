@@ -40,10 +40,10 @@ class SeparableConv2d(nn.Module):
     # STATIC METHODS
     #
     @staticmethod
-    def same_padding(kernel_size,stride):
+    def same_padding(kernel_size):
         r""" calculates same padding size
         """
-        return int((kernel_size-stride)//2)
+        return int((kernel_size-1)//2)
 
 
     def __init__(
@@ -69,7 +69,7 @@ class SeparableConv2d(nn.Module):
             conv_ch=out_ch
         else:
             conv_ch=in_ch
-        same_padding=SeparableConv2d.same_padding(kernel_size,stride)
+        same_padding=SeparableConv2d.same_padding(kernel_size)
         if padding==SeparableConv2d.SAME:
             padding=same_padding
         if padding!=same_padding:
@@ -87,7 +87,8 @@ class SeparableConv2d(nn.Module):
             out_channels=out_ch, 
             kernel_size=1, 
             stride=1,
-            padding=0 )
+            padding=0,
+            bias=True )
         if batch_norm:
             self.batch_norm=nn.BatchNorm2d(out_ch)
         else:
@@ -291,7 +292,7 @@ class XBlock(nn.Module):
     def forward(self,x):
         xpc=self.pointwise_conv(x)
         x=self.sconv_in(x)
-        if sconv_blocks_depth:
+        if self.sconv_blocks_depth:
             x=self.sconv_blocks(x)
         x=self.reduction_layer(x)
         return xpc.add_(x)
