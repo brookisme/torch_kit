@@ -128,8 +128,8 @@ class SeparableConv2d(nn.Module):
 
 
 
-
-class SeparableStack(object):
+from torchsummary import summary
+class SeparableStack(nn.Module):
     """ stack of SeparableConv2d
     Args:
         in_ch<int>: number of input channels
@@ -180,9 +180,9 @@ class SeparableStack(object):
     #
     # INTERNAL
     #
-    def _sconv_blocks(self,ch,depth,batch_norm,act,act_config):
+    def _sconv_blocks(self,in_ch,out_chs,batch_norm,act,act_config):
         blocks=[]
-        for ch in range(out_chs):
+        for ch in out_chs:
             blocks.append(SeparableConv2d(
                 in_ch,
                 ch,
@@ -190,7 +190,7 @@ class SeparableStack(object):
                 act=act,
                 act_config=act_config))
             in_ch=ch
-        return nn.ModuleList(blocks)
+        return nn.Sequential(*blocks)
 
 
     def _ident_conv(self):
@@ -243,7 +243,7 @@ class EntryBlock(nn.Module):
 
 
 
-class XBlock(object):
+class XBlock(nn.Module):
     """ Xception Block:
 
     ResStack of SeparableConv2d blocks where the last 3x3 block
