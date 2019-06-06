@@ -62,6 +62,9 @@ class SeparableConv2d(nn.Module):
         super(SeparableConv2d, self).__init__()
         if not bias:
             bias=(not batch_norm)
+        self.pointwise_in=pointwise_in
+        if not out_ch:
+            out_ch=in_ch
         if self.pointwise_in:
             conv_ch=out_ch
         else:
@@ -71,7 +74,6 @@ class SeparableConv2d(nn.Module):
             padding=same_padding
         if padding!=same_padding:
             raise NotImplementedError(CROP_TODO)
-        self.pointwise_in=pointwise_in
         self.conv=nn.Conv2d(
             in_channels=conv_ch, 
             out_channels=conv_ch, 
@@ -91,7 +93,7 @@ class SeparableConv2d(nn.Module):
         else:
             self.batch_norm=False
         if act:
-            self._act_layer(act)(**act_config)
+            self.act=self._act_layer(act)(**act_config)
         else:
             self.act=False
         if dropout:
