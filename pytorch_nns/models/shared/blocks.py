@@ -34,7 +34,7 @@ class Conv(nn.Module):
     def same_padding(kernel_size):
         r""" calculates same padding size
         """
-        return (kernel_size-1)//2
+        return int((kernel_size-1)//2)
 
 
     #
