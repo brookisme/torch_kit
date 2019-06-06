@@ -127,7 +127,7 @@ class SeparableConv2d(nn.Module):
 
 
 
-class SeparableStack(object)
+class SeparableStack(object):
     """ stack of SeparableConv2d
     Args:
         in_ch<int>: number of input channels
@@ -195,7 +195,7 @@ class SeparableStack(object)
         if self.res and in_ch!=out_chs[-1]:
             return nn.Conv2d(
                 in_channels=in_ch,
-                out_channels=out_ch
+                out_channels=out_ch,
                 kernel_size=1)
         else:
             return False
@@ -230,7 +230,7 @@ class EntryBlock(nn.Module):
             kernel_size=3,
             stride=2)
         self.conv2=nn.Conv2d(
-            in_channels=entry_ch
+            in_channels=entry_ch,
             out_channels=entry_out_ch,
             kernel_size=3)
 
@@ -280,7 +280,7 @@ class XBlock(object):
                     depth=self.sconv_blocks_depth )
         self.reduction_layer=self._reduction_layer(out_ch,strided)
         self.pointwise_conv=nn.Conv2d(
-            in_channels=in_ch
+            in_channels=in_ch,
             out_channels=out_ch,
             stride=2,
             kernel_size=1)
