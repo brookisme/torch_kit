@@ -165,7 +165,7 @@ class SeparableStack(nn.Module):
             act,
             act_config)
         self.res=res
-        self.ident_conv=self._ident_conv()
+        self.ident_conv=self._ident_conv(in_ch,out_chs)
 
 
     def forward(self,x):
@@ -194,7 +194,7 @@ class SeparableStack(nn.Module):
         return nn.Sequential(*blocks)
 
 
-    def _ident_conv(self):
+    def _ident_conv(self,in_ch,out_chs):
         if self.res and in_ch!=out_chs[-1]:
             return nn.Conv2d(
                 in_channels=in_ch,

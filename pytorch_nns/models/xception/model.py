@@ -43,8 +43,10 @@ class Xception(nn.Module):
         self.exit_xblock=blocks.XBlock(
                 in_ch=xblock_chs[-1],
                 out_ch=exit_xblock_ch,
-                dept=xblock_depth )
-        self.exit_stack=blocks.SeparableStack(*exit_stack_chs)
+                depth=xblock_depth )
+        self.exit_stack=blocks.SeparableStack(
+            in_ch=exit_xblock_ch,
+            out_chs=exit_stack_chs)
 
 
     def forward(self,x):
@@ -59,12 +61,12 @@ class Xception(nn.Module):
     #
     # INTERNAL
     #
-    def _xblocks(self,in_ch,xblock_chs,xblock_depth):
-        blocks=[]
-        for ch in xblock_chs:
-            blocks.append(blocks.XBlock(in_ch,ch,xblock_depth))
+    def _xblocks(self,in_ch,out_ch_list,depth):
+        layers=[]
+        for ch in out_ch_list:
+            layers.append(blocks.XBlock(in_ch,out_ch=ch,depth=depth))
             in_ch=ch
-        return nn.ModuleList(blocks)
+        return nn.Sequential(*layers)
 
 
 
