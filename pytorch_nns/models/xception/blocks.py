@@ -18,13 +18,14 @@ class SeparableConv2d(nn.Module):
         out_ch<int|None>: if out_ch is None out_ch=in_ch
         kernel_size<int>: kernel_size
         stride<int>: stride
+        dilation<int>: spacing between kernel elements
         padding<int|str>: TODO: for now use default ('same')
         batch_norm<bool>: include batch_norm
         bias<bool|None>: 
             - include bias term.  
             - if None bias=(not batch_norm)
         act<str|func>: activation function after block 
-        act_config: kwarg dict for activation function after block 
+        act_config: kwarg dict for activation function after block
         pointwise_in<bool>: 
             - if true perform 1x1 convolution first (inception)
             - otherwise perform the 1x1 convolution last.
@@ -40,10 +41,9 @@ class SeparableConv2d(nn.Module):
     # STATIC METHODS
     #
     @staticmethod
-    def same_padding(kernel_size):
-        r""" calculates same padding size
-        """
-        return int((kernel_size-1)//2)
+    def same_padding(kernel_size,dilation):
+        size=kernel_size+((kernel_size-1)*(dilation-1))
+        return int((size-1)//2)
 
 
     def __init__(
@@ -52,6 +52,7 @@ class SeparableConv2d(nn.Module):
             out_ch=None,
             kernel_size=3,
             stride=1,
+            dilation=1,
             padding=SAME,
             batch_norm=True,
             bias=None,
@@ -69,7 +70,7 @@ class SeparableConv2d(nn.Module):
             conv_ch=out_ch
         else:
             conv_ch=in_ch
-        same_padding=SeparableConv2d.same_padding(kernel_size)
+        same_padding=SeparableConv2d.same_padding(kernel_size,dilation)
         if padding==SeparableConv2d.SAME:
             padding=same_padding
         if padding!=same_padding:
@@ -80,7 +81,8 @@ class SeparableConv2d(nn.Module):
             kernel_size=kernel_size, 
             stride=stride, 
             padding=padding, 
-            groups=conv_ch, 
+            groups=conv_ch,
+            dilation=dilation,
             bias=bias)
         self.pointwise=nn.Conv2d(
             in_channels=in_ch, 
@@ -129,7 +131,6 @@ class SeparableConv2d(nn.Module):
 
 
 
-from torchsummary import summary
 class SeparableStack(nn.Module):
     """ stack of SeparableConv2d
     Args:
@@ -139,6 +140,8 @@ class SeparableStack(nn.Module):
             - use if out_chs is None
             - if out_ch is None out_ch=in_ch
             - create 'depth' number of layers (ie out_chs=[out_ch]*depth)
+        stride<int>: stride
+        dilation<int>: spacing between kernel elements
         res<bool>:
             - if true add resnet 'ident' to output of SeparableConv2d-Blocks.
             - if in_ch != out_ch perform 1x1 Conv to match channels
@@ -148,6 +151,8 @@ class SeparableStack(nn.Module):
             in_ch,
             out_chs=None,
             out_ch=None,
+            stride=1,
+            dilation=1,
             depth=1,
             res=False,
             batch_norm=True,
@@ -161,6 +166,8 @@ class SeparableStack(nn.Module):
         self.sconvs=self._sconv_blocks(
             in_ch,
             out_chs,
+            stride,
+            dilation,
             batch_norm,
             act,
             act_config)
@@ -181,12 +188,21 @@ class SeparableStack(nn.Module):
     #
     # INTERNAL
     #
-    def _sconv_blocks(self,in_ch,out_chs,batch_norm,act,act_config):
+    def _sconv_blocks(self,
+            in_ch,
+            out_chs,
+            stride,
+            dilation,
+            batch_norm,
+            act,
+            act_config):
         blocks=[]
         for ch in out_chs:
             blocks.append(SeparableConv2d(
                 in_ch,
                 ch,
+                stride=stride,
+                dilation=dilation,
                 batch_norm=batch_norm,
                 act=act,
                 act_config=act_config))
@@ -231,11 +247,13 @@ class EntryBlock(nn.Module):
             in_channels=in_ch,
             out_channels=entry_ch,
             kernel_size=3,
-            stride=2)
+            stride=2,
+            padding=1)
         self.conv2=nn.Conv2d(
             in_channels=entry_ch,
             out_channels=entry_out_ch,
-            kernel_size=3)
+            kernel_size=3,
+            padding=1)
 
 
     def forward(self,x):
@@ -263,29 +281,44 @@ class XBlock(nn.Module):
         depth<int>: 
             - must be >= 2
             - total number of layers
-        strided<bool>:
-            - if true use SeparableConv2d-stride-2 as the last layer
+        out_dilation: dilation for the last layer
+        maxpool<bool>:
+            - if false use SeparableConv2d-stride-(dilation) as the last layer
             - otherwise use MaxPooling as the last layer
     """
     def __init__(self,
             in_ch,
             out_ch=None,
             depth=3,
-            strided=True):
+            dilation=1,
+            maxpool=False):
+        """TODO WORK OUT DILATION PADDING"""
         super(XBlock, self).__init__()
         if out_ch is None:
             out_ch=in_ch
-        self.sconv_in=SeparableConv2d(in_ch,out_ch)
+        self.sconv_in=SeparableConv2d(
+            in_ch,
+            out_ch,
+            dilation=dilation)
         self.sconv_blocks_depth=depth-2
         if self.sconv_blocks_depth:
             self.sconv_blocks=SeparableStack(
                     out_ch,
-                    depth=self.sconv_blocks_depth )
-        self.reduction_layer=self._reduction_layer(out_ch,strided)
+                    depth=self.sconv_blocks_depth,
+                    dilation=dilation)
+        if dilation==1:
+            out_stride=2
+        else:
+            out_stride=1
+        self.reduction_layer=self._reduction_layer(
+            out_ch,
+            maxpool,
+            out_stride,
+            dilation)
         self.pointwise_conv=nn.Conv2d(
             in_channels=in_ch,
             out_channels=out_ch,
-            stride=2,
+            stride=out_stride,
             kernel_size=1)
 
 
@@ -298,17 +331,23 @@ class XBlock(nn.Module):
         return xpc.add_(x)
 
 
-    def _reduction_layer(self,ch,strided):
-        if strided:
+    def _reduction_layer(self,ch,maxpool,stride,dilation):
+        if maxpool:
+            if stride==1:
+                pool_padding=1
+            else:
+                pool_padding=0
+            return nn.MaxPool2d(
+                kernel_size=3, 
+                stride=stride,
+                dilation=dilation,
+                padding=pool_padding)
+        else:
             return SeparableConv2d(
                 in_ch=ch,
                 out_ch=ch,
-                stride=2)
-        else:
-            return nn.MaxPool2d(
-                kernel_size=3, 
-                stride=2,
-                padding=1)
+                stride=stride,
+                dilation=dilation)
 
 
 
