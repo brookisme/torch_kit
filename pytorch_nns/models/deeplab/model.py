@@ -25,14 +25,19 @@ class DeeplabV3plus(nn.Module):
     def __init__(self,
             in_ch,
             out_ch,
-            backbone_low_level_out_ch=128,
-            backbone_out_ch=2048,
             backbone_config={},
+            backbone_low_level_out_ch=None,
+            backbone_out_ch=None,
             backbone=XCEPTION,
             aspp_out_ch=256,
             upsample_mode='bilinear'):
         super(DeeplabV3plus,self).__init__()
-        self.backbone=self._backbone(backbone,in_ch,backbone_config)
+        self.backbone,backbone_out_ch,backbone_low_level_out_ch=self._backbone(
+            backbone,
+            in_ch,
+            backbone_config,
+            backbone_out_ch,
+            backbone_low_level_out_ch)
         self.aspp=blocks.ASPP(in_ch=backbone_out_ch,out_ch=aspp_out_ch)
         self.channel_reducer=nn.Conv2d(
             in_channels=aspp_out_ch+backbone_low_level_out_ch,
@@ -52,9 +57,12 @@ class DeeplabV3plus(nn.Module):
         return x
 
 
-    def _backbone(self,backbone,in_ch,backbone_config):
+    def _backbone(self,backbone,in_ch,backbone_config,out_ch,low_level_out_ch):
         if backbone==DeeplabV3plus.XCEPTION:
-            return Xception(in_ch=in_ch,**backbone_config)
+            net=Xception(in_ch=in_ch,**backbone_config)
+            out_ch=out_ch or net.out_ch
+            low_level_out_ch=low_level_out_ch or net.low_level_out_ch
+            return net, out_ch, low_level_out_ch
         else:
             raise NotImplementedError("Currently only supports 'xception' backbone")
 

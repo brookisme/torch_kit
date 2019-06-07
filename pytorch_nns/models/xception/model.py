@@ -32,6 +32,9 @@ class Xception(nn.Module):
     Links:
 
     """
+    #
+    # INSTANCE METHODS
+    #
     def __init__(self,
             in_ch,
             output_stride=16,
@@ -75,6 +78,7 @@ class Xception(nn.Module):
             self.output_block=self._output_block(nb_classes)
         else:
             self.output_block=False
+            self.out_ch=exit_stack_chs[-1]
 
 
     def forward(self,x):
@@ -84,7 +88,7 @@ class Xception(nn.Module):
         for xblock in self.xblocks:
             x=xblock(x)
             self._increment_stride_state()
-            if self.stride_state==self.low_level_stride: 
+            if self.at_low_level_stride: 
                 xlow=x
         x=self.bottleneck(x)
         x=self.exit_xblock(x)
@@ -110,6 +114,8 @@ class Xception(nn.Module):
                 dilation=self.dilation,
             ))
             self._increment_stride_state()
+            if self.at_low_level_stride: 
+                self.low_level_out_ch=ch
             in_ch=ch
         return nn.ModuleList(layers)
 
@@ -118,11 +124,13 @@ class Xception(nn.Module):
         self.dilation=1
         self.stride_index=0
         self.stride_state=None
+        self.at_low_level_stride=False
 
 
     def _increment_stride_state(self):
         self.stride_index+=1
         self.stride_state=(2**self.stride_index)
+        self.at_low_level_stride=(self.stride_state==self.low_level_stride)
         if self.stride_state>=self.output_stride:
             self.dilation*=2
 
