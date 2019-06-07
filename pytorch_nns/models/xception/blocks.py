@@ -46,6 +46,9 @@ class SeparableConv2d(nn.Module):
         return int((size-1)//2)
 
 
+    #
+    # INSTANCE METHODS
+    #
     def __init__(
             self,
             in_ch,

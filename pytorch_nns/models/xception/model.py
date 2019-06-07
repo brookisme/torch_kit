@@ -96,7 +96,5 @@ class Xception(nn.Module):
         self.stride_index+=1
         if ((2**self.stride_index)>=self.output_stride):
             self.dilation*=2
-            print('boom',2**self.stride_index)
-        print(self.stride_index,self.dilation)
 
 
