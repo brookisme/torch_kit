@@ -98,10 +98,7 @@ class SeparableConv2d(nn.Module):
             self.batch_norm=nn.BatchNorm2d(out_ch)
         else:
             self.batch_norm=False
-        if act:
-            self.act=self._act_layer(act)(**act_config)
-        else:
-            self.act=False
+        self.act=self._act_layer(act,act_config)
         if dropout:
             if dropout is True:
                 dropout=DEFAULT_DROPOUT
@@ -126,11 +123,12 @@ class SeparableConv2d(nn.Module):
         return x
 
 
-    def _act_layer(self,act):
-        if isinstance(act,str):
-            return getattr(nn,act)
-        else:
-            return act
+    def _act_layer(self,act,act_config):
+        if act:
+            if isinstance(act,str):
+                act=getattr(nn,act)
+            return act(**act_config)
+
 
 
 
@@ -238,30 +236,65 @@ class EntryBlock(nn.Module):
         in_ch<int>: number of input channels
         entry_ch<int>: out_ch of first block (the stride-2 block)
         entry_out_ch<int>: out_ch of second block
+        act<str|func>: activation function after each conv 
+        act_config: kwarg dict for activation function after each conv
     """
     def __init__(
             self,
             in_ch,
             entry_ch=32,
-            entry_out_ch=64
+            entry_out_ch=64,
+            batch_norm=True,
+            bias=None,
+            act='ReLU',
+            act_config={}
         ):
         super(EntryBlock, self).__init__()
+        if bias is None:
+            bias=(not batch_norm)
+        if batch_norm:
+            self.bn1=nn.BatchNorm2d(entry_ch)
+            self.bn2=nn.BatchNorm2d(entry_out_ch)
+        else:
+            self.bn1=False
+            self.bn2=False
+        self.act1=self._act_layer(act,act_config)
+        self.act2=self._act_layer(act,act_config)
         self.conv1=nn.Conv2d(
             in_channels=in_ch,
             out_channels=entry_ch,
             kernel_size=3,
             stride=2,
-            padding=1)
+            padding=1
+            bias=bias)
         self.conv2=nn.Conv2d(
             in_channels=entry_ch,
             out_channels=entry_out_ch,
             kernel_size=3,
-            padding=1)
+            padding=1
+            bias=bias)
 
 
     def forward(self,x):
         x=self.conv1(x)
-        return self.conv2(x)
+        if self.bn1:
+            x=self.bn1(x)
+        if self.act1:
+            x=self.act1(x)
+        x=self.conv2(x)
+        if self.bn2:
+            x=self.bn2(x)
+        if self.act2:
+            x=self.act2(x)
+        return x
+
+
+    def _act_layer(self,act,act_config):
+        if act:
+            if isinstance(act,str):
+                act=getattr(nn,act)
+            return act(**act_config)
+
 
 
 
@@ -295,7 +328,6 @@ class XBlock(nn.Module):
             depth=3,
             dilation=1,
             maxpool=False):
-        """TODO WORK OUT DILATION PADDING"""
         super(XBlock, self).__init__()
         if out_ch is None:
             out_ch=in_ch
@@ -323,10 +355,12 @@ class XBlock(nn.Module):
             out_channels=out_ch,
             stride=out_stride,
             kernel_size=1)
+        self.pointwise_bn=nn.BatchNorm2d(out_ch)
 
 
     def forward(self,x):
         xpc=self.pointwise_conv(x)
+        xpc=self.pointwise_bn(xpc)
         x=self.sconv_in(x)
         if self.sconv_blocks_depth:
             x=self.sconv_blocks(x)
