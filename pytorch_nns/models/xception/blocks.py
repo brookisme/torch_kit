@@ -41,7 +41,7 @@ class SeparableConv2d(nn.Module):
     # STATIC METHODS
     #
     @staticmethod
-    def same_padding(kernel_size,dilation):
+    def same_padding(kernel_size,dilation=1):
         size=kernel_size+((kernel_size-1)*(dilation-1))
         return int((size-1)//2)
 

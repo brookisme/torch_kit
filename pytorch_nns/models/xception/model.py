@@ -8,11 +8,15 @@ import pytorch_nns.models.xception.blocks as blocks
 class Xception(nn.Module):
     r""" (Modified Aligned) Xception
 
-    Xception Backbone from DeeplabV3+
+    Xception Network or Backbone from DeeplabV3+
     
     Args:
         in_ch
         output_stride<int>: output_stride
+        low_level_stride<int>:
+            - the stride at which to return low-level-features
+            - if None: low_level_stride = output_stride // 2
+            - if False `forward` does not return low-level-features
         entry_ch: 32
         entry_out_ch: 64
         xblock_chs: [128,256,728]
@@ -20,7 +24,9 @@ class Xception(nn.Module):
         exit_xblock_ch: 1024
         exit_stack_chs: [1536,1536,2048]
         xblock_depth: 3
-
+        nb_classes<int|None>:
+            - if None do not add... 
+            - otherwise ...
     Properties:
     Links:
 
@@ -28,15 +34,21 @@ class Xception(nn.Module):
     def __init__(self,
             in_ch,
             output_stride=16,
+            low_level_stride=4,
             entry_ch=32,
             entry_out_ch=64,
             xblock_chs=[128,256,728],
             bottleneck_depth=16,
             exit_xblock_ch=1024,
             exit_stack_chs=[1536,1536,2048],
-            xblock_depth=3):
+            xblock_depth=3,
+            nb_classes=None):
         super(Xception,self).__init__()
-        self._init_stride_state(output_stride)
+        if low_level_stride is None:
+            low_level_stride=int(output_stride//2)
+        self.output_stride=output_stride
+        self.low_level_stride=low_level_stride
+        self._init_stride_state()
         self.entry_block=blocks.EntryBlock(in_ch,entry_ch,entry_out_ch)
         self._increment_stride_state()
         self.xblocks=self._xblocks(
@@ -58,15 +70,29 @@ class Xception(nn.Module):
             in_ch=exit_xblock_ch,
             out_chs=exit_stack_chs,
             dilation=self.dilation)
+        if nb_classes:
+            self.output_block=self._output_block(nb_classes)
+        else:
+            self.output_block=False
 
 
     def forward(self,x):
+        self._init_stride_state()
         x=self.entry_block(x)
-        x=self.xblocks(x)
+        for block in self.xblocks:
+            x=self.xblocks(x)
+            self._increment_stride_state()
+            if self.stride_state==self.low_level_stride: 
+                xlow=x
         x=self.bottleneck(x)
         x=self.exit_xblock(x)
         x=self.exit_stack(x)
-        return x
+        if self.output_block:
+            x=self.output_block
+        if self.low_level_stride:
+            return x, xlow
+        else:
+            return x
 
 
     #
@@ -83,18 +109,22 @@ class Xception(nn.Module):
             ))
             self._increment_stride_state()
             in_ch=ch
-        return nn.Sequential(*layers)
+        return nn.ModuleList(layers)
 
 
-    def _init_stride_state(self,output_stride):
-        self.output_stride=output_stride
-        self.stride_index=0
+    def _init_stride_state(self):
         self.dilation=1
-    
+        self.stride_index=0
+        self.stride_state=None
+
 
     def _increment_stride_state(self):
         self.stride_index+=1
-        if ((2**self.stride_index)>=self.output_stride):
+        self.stride_state=(2**self.stride_index)
+        if self.stride_state>=self.output_stride:
             self.dilation*=2
 
 
+    def _output_block(self,nb_classes):
+        """ TODO: Implement output block for Image Classification """
+        pass
