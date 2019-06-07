@@ -25,8 +25,9 @@ class Xception(nn.Module):
         exit_stack_chs: [1536,1536,2048]
         xblock_depth: 3
         nb_classes<int|None>:
-            - if None do not add... 
-            - otherwise ...
+            - required for image (multi) classification problems
+            - if None, no output layer is added and it maybe used as a backbone
+              for an encoder-decoder (such as DeepLabV3plus).
     Properties:
     Links:
 
@@ -79,8 +80,9 @@ class Xception(nn.Module):
     def forward(self,x):
         self._init_stride_state()
         x=self.entry_block(x)
-        for block in self.xblocks:
-            x=self.xblocks(x)
+        self._increment_stride_state()
+        for xblock in self.xblocks:
+            x=xblock(x)
             self._increment_stride_state()
             if self.stride_state==self.low_level_stride: 
                 xlow=x

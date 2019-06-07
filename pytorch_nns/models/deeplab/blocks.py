@@ -45,7 +45,7 @@ class ASPP(nn.Module):
     def __init__(
             self,
             in_ch,
-            out_ch=None,
+            out_ch=256,
             kernel_sizes=[1,3,3,3],
             dilations=[1,6,12,18],
             pooling=AVERAGE,
@@ -61,14 +61,15 @@ class ASPP(nn.Module):
             out_ch=in_ch
         self.in_ch=in_ch
         self.out_ch=out_ch
+        self.nb_aconvs=len(kernel_sizes)
         if not bias:
             bias=(not batch_norm)
         self.batch_norm=batch_norm
         self.bias=bias
         self.pooling=self._pooling(pooling)
-        self.batch_norms=self._batch_norms(batch_norm,in_ch,len(kernel_sizes))
+        self.batch_norms=self._batch_norms(batch_norm)
         self.aconv_list=self._aconv_list(kernel_sizes,dilations)
-        self.out_conv=self._out_conv(in_ch,out_ch,out_kernel_size,out_batch_norm)
+        self.out_conv=self._out_conv(out_kernel_size,out_batch_norm)
         self.act=self._act_layer(act,act_config)
 
 
@@ -76,15 +77,15 @@ class ASPP(nn.Module):
         stack=[l(x) for l in self.aconv_list]
         if self.pooling:
             stack.append(self.pooling(x))
-        x=torch.cat(stack) 
-
+        x=torch.cat(stack,dim=1)
+        x=self.out_conv(x)
         if self.act:
             x=self.act(x)
         return x
 
 
     def _aconv_list(self,kernels,dilations):
-        aconvs=[self._aconv(k,d,i) for i,(k,d) in  enumerate(zip(kernels,dilations))]
+        aconvs=[self._aconv(k,d,i) for i,(k,d) in enumerate(zip(kernels,dilations))]
         return nn.ModuleList(aconvs)
 
 
@@ -105,9 +106,9 @@ class ASPP(nn.Module):
     def _pooling(self,pooling):
         if pooling:
             if pooling==ASPP.AVERAGE:
-                pooling=nn.AdaptiveAvgPool2d(None)
+                pooling=nn.AdaptiveAvgPool2d((None,None))
             elif pooling==MAX:
-                pooling=nn.AdaptiveMaxPool2d(None)
+                pooling=nn.AdaptiveMaxPool2d((None,None))
             else:
                 raise NotImplementedError("pooling must be 'avg' or 'max'")
         else:
@@ -115,23 +116,26 @@ class ASPP(nn.Module):
         return pooling
 
 
-    def _batch_norms(self,batch_norm,in_ch,count):
+    def _batch_norms(self,batch_norm):
         if batch_norm:
-            batch_norms=nn.ModuleList([ nn.BatchNorm2d(in_ch) for _ in range(count) ])
+            batch_norms=nn.ModuleList(
+                [ nn.BatchNorm2d(self.out_ch) for _ in range(self.nb_aconvs) ])
         else:
             batch_norms=False
         return batch_norms
 
 
-    def _out_conv(self,in_ch,out_ch,kernel_size,batch_norm):
+    def _out_conv(self,kernel_size,batch_norm):
+        in_ch=self.nb_aconvs*self.out_ch
+        if self.pooling: in_ch+=self.in_ch
         conv=nn.Conv2d(
-            in_ch,
-            out_ch,
+            in_channels=in_ch,
+            out_channels=self.out_ch,
             kernel_size=kernel_size,
             padding=ASPP.same_padding(kernel_size))
         layers=[conv]
         if batch_norm:
-            layers.append(nn.BatchNorm2d(in_ch))
+            layers.append(nn.BatchNorm2d(self.out_ch))
         return nn.Sequential(*layers)
 
 
