@@ -265,13 +265,13 @@ class EntryBlock(nn.Module):
             out_channels=entry_ch,
             kernel_size=3,
             stride=2,
-            padding=1
+            padding=1,
             bias=bias)
         self.conv2=nn.Conv2d(
             in_channels=entry_ch,
             out_channels=entry_out_ch,
             kernel_size=3,
-            padding=1
+            padding=1,
             bias=bias)
 
 
