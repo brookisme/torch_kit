@@ -46,7 +46,9 @@ class Xception(nn.Module):
             exit_xblock_ch=1024,
             exit_stack_chs=[1536,1536,2048],
             xblock_depth=3,
-            nb_classes=None):
+            nb_classes=None,
+            ouput_act='Softmax',
+            output_act_config={}):
         super(Xception,self).__init__()
         if low_level_stride is None:
             low_level_stride=int(output_stride//2)
@@ -75,7 +77,11 @@ class Xception(nn.Module):
             out_chs=exit_stack_chs,
             dilation=self.dilation)
         if nb_classes:
-            self.output_block=self._output_block(nb_classes)
+            self.nb_classes=nb_classes
+            self.output_block=self._output_block(
+                exit_stack_chs[-1],
+                ouput_act,
+                output_act_config)
         else:
             self.output_block=False
             self.out_ch=exit_stack_chs[-1]
@@ -94,8 +100,10 @@ class Xception(nn.Module):
         x=self.exit_xblock(x)
         x=self.exit_stack(x)
         if self.output_block:
-            x=self.output_block
-        if self.low_level_stride:
+            x=self.output_block(x)
+            x=x.view(-1,self.nb_classes)
+            return x
+        elif self.low_level_stride:
             return x, xlow
         else:
             return x
@@ -135,6 +143,25 @@ class Xception(nn.Module):
             self.dilation*=2
 
 
-    def _output_block(self,nb_classes):
-        """ TODO: Implement output block for Image Classification """
-        pass
+    def _output_block(self,in_ch,act,act_config):
+        """ TODO: Investigate Best/Recommended Output Block """
+        layers=[
+            nn.Conv2d(
+                in_channels=in_ch,
+                out_channels=self.nb_classes,
+                kernel_size=3,
+                padding=1),
+            nn.BatchNorm2d(self.nb_classes),
+            nn.ReLU(),
+            nn.AdaptiveAvgPool2d((1,1)) 
+        ]
+        if act:
+            layers.append(self._act_layer(act,act_config))
+        return nn.Sequential(*layers)
+
+
+    def _act_layer(self,act,act_config):
+        if act:
+            if isinstance(act,str):
+                act=getattr(nn,act)
+            return act(**act_config)
