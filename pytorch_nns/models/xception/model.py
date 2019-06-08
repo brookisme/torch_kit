@@ -2,6 +2,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_nns.helpers as h
 import pytorch_nns.models.xception.blocks as blocks
+import pytorch_nns.models.classifiers as classifiers
 
 
 
@@ -24,10 +25,8 @@ class Xception(nn.Module):
         exit_xblock_ch: 1024
         exit_stack_chs: [1536,1536,2048]
         xblock_depth: 3
-        nb_classes<int|None>:
-            - required for image (multi) classification problems
-            - if None, no output layer is added and it maybe used as a backbone
-              for an encoder-decoder (such as DeepLabV3plus).
+        classifier:
+            ...
     Properties:
     Links:
 
@@ -46,9 +45,9 @@ class Xception(nn.Module):
             exit_xblock_ch=1024,
             exit_stack_chs=[1536,1536,2048],
             xblock_depth=3,
+            classifier=None,
             nb_classes=None,
-            ouput_act='Softmax',
-            output_act_config={}):
+            classifier_config={}):
         super(Xception,self).__init__()
         if low_level_stride is None:
             low_level_stride=int(output_stride//2)
@@ -76,14 +75,14 @@ class Xception(nn.Module):
             in_ch=exit_xblock_ch,
             out_chs=exit_stack_chs,
             dilation=self.dilation)
-        if nb_classes:
-            self.nb_classes=nb_classes
-            self.output_block=self._output_block(
-                exit_stack_chs[-1],
-                ouput_act,
-                output_act_config)
+        if classifier:
+            classifier=classifiers.get(classifier)
+            classifier_config['in_ch']=exit_stack_chs[-1]
+            if nb_classes:
+                classifier_config['nb_classes']=nb_classes
+            self.classifier_block=classifier(**classifier_config)
         else:
-            self.output_block=False
+            self.classifier_block=False
             self.out_ch=exit_stack_chs[-1]
 
 
@@ -99,10 +98,8 @@ class Xception(nn.Module):
         x=self.bottleneck(x)
         x=self.exit_xblock(x)
         x=self.exit_stack(x)
-        if self.output_block:
-            x=self.output_block(x)
-            x=x.view(-1,self.nb_classes)
-            return x
+        if self.classifier_block:
+            return self.classifier_block(x)
         elif self.low_level_stride:
             return x, xlow
         else:
