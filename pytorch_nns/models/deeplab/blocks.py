@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+from pytorch_nns.models.helpers import activation,same_padding
+
 
 #
 # CONSTANTS
@@ -26,17 +28,10 @@ class ASPP(nn.Module):
     # CONSTANTS
     #
     SAME='same'
+    RELU='ReLU'
     AVERAGE='avg'
     MAX='max'
-    RELU='ReLU'
 
-    #
-    # STATIC METHODS
-    #
-    @staticmethod
-    def same_padding(kernel_size,dilation=1):
-        size=kernel_size+((kernel_size-1)*(dilation-1))
-        return int((size-1)//2)
 
 
     #
@@ -70,7 +65,7 @@ class ASPP(nn.Module):
         self.batch_norms=self._batch_norms(batch_norm)
         self.aconv_list=self._aconv_list(kernel_sizes,dilations)
         self.out_conv=self._out_conv(out_kernel_size,out_batch_norm)
-        self.act=self._act_layer(act,act_config)
+        self.act=activation(act,**act_config)
 
 
     def forward(self, x):
@@ -95,7 +90,7 @@ class ASPP(nn.Module):
             out_channels=self.out_ch,
             kernel_size=kernel,
             dilation=dilation,
-            padding=ASPP.same_padding(kernel,dilation),
+            padding=same_padding(kernel,dilation),
             bias=self.bias)
         layers=[aconv]
         if self.batch_norms:
@@ -143,17 +138,11 @@ class ASPP(nn.Module):
             in_channels=in_ch,
             out_channels=self.out_ch,
             kernel_size=kernel_size,
-            padding=ASPP.same_padding(kernel_size))
+            padding=same_padding(kernel_size))
         layers=[conv]
         if batch_norm:
             layers.append(nn.BatchNorm2d(self.out_ch))
         return nn.Sequential(*layers)
 
 
-
-    def _act_layer(self,act,act_config):
-        if act:
-            if isinstance(act,str):
-                act=getattr(nn,act)
-            return act(**act_config)
 

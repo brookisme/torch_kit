@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+from pytorch_nns.models.helpers import activation, same_padding
+
 
 #
 # CONSTANTS
@@ -38,15 +40,6 @@ class SeparableConv2d(nn.Module):
 
 
     #
-    # STATIC METHODS
-    #
-    @staticmethod
-    def same_padding(kernel_size,dilation=1):
-        size=kernel_size+((kernel_size-1)*(dilation-1))
-        return int((size-1)//2)
-
-
-    #
     # INSTANCE METHODS
     #
     def __init__(
@@ -72,11 +65,11 @@ class SeparableConv2d(nn.Module):
         if self.pointwise_in:
             conv_ch=out_ch
         else:
-            conv_ch=in_ch
-        same_padding=SeparableConv2d.same_padding(kernel_size,dilation)
+            conv_ch=in_spadch
+        spad=same_padding(kernel_size,dilation)
         if padding==SeparableConv2d.SAME:
-            padding=same_padding
-        if padding!=same_padding:
+            padding=spad
+        if padding!=spad:
             raise NotImplementedError(CROP_TODO)
         self.conv=nn.Conv2d(
             in_channels=conv_ch, 
@@ -98,7 +91,7 @@ class SeparableConv2d(nn.Module):
             self.batch_norm=nn.BatchNorm2d(out_ch)
         else:
             self.batch_norm=False
-        self.act=self._act_layer(act,act_config)
+        self.act=activation(act,**act_config)
         if dropout:
             if dropout is True:
                 dropout=DEFAULT_DROPOUT
@@ -121,13 +114,6 @@ class SeparableConv2d(nn.Module):
         if self.dropout:
             x=self.dropout(x)
         return x
-
-
-    def _act_layer(self,act,act_config):
-        if act:
-            if isinstance(act,str):
-                act=getattr(nn,act)
-            return act(**act_config)
 
 
 
@@ -258,8 +244,8 @@ class EntryBlock(nn.Module):
         else:
             self.bn1=False
             self.bn2=False
-        self.act1=self._act_layer(act,act_config)
-        self.act2=self._act_layer(act,act_config)
+        self.act1=activation(act,**act_config)
+        self.act2=activation(act,**act_config)
         self.conv1=nn.Conv2d(
             in_channels=in_ch,
             out_channels=entry_ch,
@@ -287,13 +273,6 @@ class EntryBlock(nn.Module):
         if self.act2:
             x=self.act2(x)
         return x
-
-
-    def _act_layer(self,act,act_config):
-        if act:
-            if isinstance(act,str):
-                act=getattr(nn,act)
-            return act(**act_config)
 
 
 

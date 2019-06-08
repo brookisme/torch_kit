@@ -9,6 +9,8 @@ PADDING=0
 class Conv(nn.Module):
     r""" Conv Block
     
+    ** DEPERICATED: Use models.blocks.Conv **
+
     Args:
         in_ch (int): Number of channels in input
         out_ch (int <None>): Number of channels in output (if None => in_ch)

@@ -143,25 +143,5 @@ class Xception(nn.Module):
             self.dilation*=2
 
 
-    def _output_block(self,in_ch,act,act_config):
-        """ TODO: Investigate Best/Recommended Output Block """
-        layers=[
-            nn.Conv2d(
-                in_channels=in_ch,
-                out_channels=self.nb_classes,
-                kernel_size=3,
-                padding=1),
-            nn.BatchNorm2d(self.nb_classes),
-            nn.ReLU(),
-            nn.AdaptiveAvgPool2d((1,1)) 
-        ]
-        if act:
-            layers.append(self._act_layer(act,act_config))
-        return nn.Sequential(*layers)
 
 
-    def _act_layer(self,act,act_config):
-        if act:
-            if isinstance(act,str):
-                act=getattr(nn,act)
-            return act(**act_config)
