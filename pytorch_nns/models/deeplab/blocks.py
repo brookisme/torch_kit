@@ -76,7 +76,7 @@ class ASPP(nn.Module):
     def forward(self, x):
         stack=[l(x) for l in self.aconv_list]
         if self.pooling:
-            stack.append(self.pooling(x))
+            stack.append(self.pooling(x)*torch.ones(stack[0].shape))
         x=torch.cat(stack,dim=1)
         x=self.out_conv(x)
         if self.act:
@@ -100,17 +100,29 @@ class ASPP(nn.Module):
         layers=[aconv]
         if self.batch_norms:
             layers.append(self.batch_norms[index])
+        # RELU?
         return nn.Sequential(*layers)
 
 
     def _pooling(self,pooling):
         if pooling:
             if pooling==ASPP.AVERAGE:
-                pooling=nn.AdaptiveAvgPool2d((None,None))
-            elif pooling==MAX:
-                pooling=nn.AdaptiveMaxPool2d((None,None))
+                pooling=nn.AdaptiveAvgPool2d((1,1))
+            elif pooling==ASPP.MAX:
+                pooling=nn.AdaptiveMaxPool2d((1,1))
             else:
                 raise NotImplementedError("pooling must be 'avg' or 'max'")
+            pooling=nn.Sequential(
+                pooling,
+                nn.Conv2d(
+                    self.in_ch, 
+                    self.out_ch, 
+                    kernel_size=1, 
+                    stride=1,
+                    bias=False),
+                nn.BatchNorm2d(self.out_ch),
+                nn.ReLU())
+            # REMOVE RELU?
         else:
             pooling=False
         return pooling
@@ -118,8 +130,7 @@ class ASPP(nn.Module):
 
     def _batch_norms(self,batch_norm):
         if batch_norm:
-            batch_norms=nn.ModuleList(
-                [ nn.BatchNorm2d(self.out_ch) for _ in range(self.nb_aconvs) ])
+            batch_norms=[ nn.BatchNorm2d(self.out_ch) for _ in range(self.nb_aconvs) ]
         else:
             batch_norms=False
         return batch_norms
@@ -127,7 +138,7 @@ class ASPP(nn.Module):
 
     def _out_conv(self,kernel_size,batch_norm):
         in_ch=self.nb_aconvs*self.out_ch
-        if self.pooling: in_ch+=self.in_ch
+        if self.pooling: in_ch+=self.out_ch
         conv=nn.Conv2d(
             in_channels=in_ch,
             out_channels=self.out_ch,

@@ -49,6 +49,7 @@ class DeeplabV3plus(nn.Module):
 
     def forward(self,x):
         x,lowx=self.backbone(x)
+        # lowx: BN RELU? - BN RELU AFTER ALL XCEPTION?
         x=self.aspp(x)
         x=self.up1(x)
         x=torch.cat([x,lowx],dim=1)
