@@ -104,7 +104,7 @@ class Conv(nn.Module):
                     dilation=dilation,
                     bias=(not batch_norm)))
             if batch_norm:
-                layers.append(nn.BatchNorm2d(self.out_ch))
+                layers.append(nn.BatchNorm2d(ch))
             if act:
                 layers.append(activation(act=act,**act_config))
             if dropout:
@@ -188,7 +188,7 @@ class Dense(nn.Module):
                     out_features=ch,
                     bias=(not batch_norm)))
             if batch_norm:
-                layers.append(nn.BatchNorm1d(self.out_ch))
+                layers.append(nn.BatchNorm1d(ch))
             if act:
                 layers.append(activation(act=act,**act_config))
             if dropout:
