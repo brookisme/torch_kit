@@ -43,13 +43,18 @@ class GAPClassifier(nn.Module):
     4. Activation
     
     Args:
-        in_ch:
-        nb_classes:
-        nb_convs:
-        conv_config:
-        nb_dense:
-        act:
-        act_config:
+        in_ch,
+        nb_classes,
+        nb_convs=1,
+        conv_out_ch=None,
+        conv_chs=None,
+        conv_config={},
+        pooling=AVERAGE,
+        nb_dense=1,
+        dense_chs=None,
+        dense_config={},
+        act=None,
+        act_config={}
     """
     #
     # CONSTANTS

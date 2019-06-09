@@ -25,8 +25,10 @@ class Xception(nn.Module):
         exit_xblock_ch: 1024
         exit_stack_chs: [1536,1536,2048]
         xblock_depth: 3
+        nb_classes<int|None>:
+            - None for backbone (no classifier added)
         classifier:
-            ...
+        classifier_config:
     Properties:
     Links:
 
@@ -45,8 +47,8 @@ class Xception(nn.Module):
             exit_xblock_ch=1024,
             exit_stack_chs=[1536,1536,2048],
             xblock_depth=3,
-            classifier=None,
             nb_classes=None,
+            classifier='gap',
             classifier_config={}):
         super(Xception,self).__init__()
         if low_level_stride is None:
@@ -75,11 +77,10 @@ class Xception(nn.Module):
             in_ch=exit_xblock_ch,
             out_chs=exit_stack_chs,
             dilation=self.dilation)
-        if classifier:
-            classifier=classifiers.get(classifier)
+        if nb_classes:
+            classifier_config['nb_classes']=nb_classes
             classifier_config['in_ch']=exit_stack_chs[-1]
-            if nb_classes:
-                classifier_config['nb_classes']=nb_classes
+            classifier=classifiers.get(classifier)
             self.classifier_block=classifier(**classifier_config)
         else:
             self.classifier_block=False

@@ -12,19 +12,35 @@ class Conv(nn.Module):
     r""" Conv Block
     
     Args:
-        in_ch (int): Number of channels in input
-        out_ch (int <None>): Number of channels in output (if None => in_ch)
-        out_chs: LIST
-        depth (int <2>): The number of convolutional layers 
-        kernel_size (int <3>): Kernel Size
-        kernel_sizes: LIST
-        stride (int <1>): Stride
-        dilation (int <1>): Dilation rate
-        padding (int|str <0>): int or same if padding='same' -> int((kernel_size-1)/2) 
-        batch_norm (bool <True>): Add batch norm after conv
-        dropout (False|float <False>): Dropout to be applied after Conv
-        act (str <'relu'>): Method name of activation function after each Conv Layer
-        act_config (dict <{}>): Kwargs for activation function after each Conv Layer
+        in_ch<int>: Number of channels in input
+        out_ch<int|None>: 
+            - number of channels in output
+            - only valid if out_chs is None
+            - if None, out_ch=in_ch
+        out_chs<list|None>:
+            - list of output channels from each conv
+            - if None out_chs=[out_ch]*depth
+        depth<int>: 
+            - the number of convolutional layers 
+            - only valid if out_chs is None
+        kernel_size<int>: 
+            - kernel size
+            - only valid if kernel_sizes is None
+        kernel_sizes<list|None>:
+            - the kernel size for each conv
+            - if None kernel_sizes=[kernel_size]*len(out_chs)
+        stride<int>: stride
+        dilation<int>: dilation rate
+        padding<int|str>: 
+            - padding
+            - int or 'same' 
+        batch_norm<bool>: add batch norm after each conv
+        dropout<bool|float>:
+            - if truthy dropout applied after each conv
+            - if float dropout rate = dropout
+            - else dropout rate=0.5
+        act<str|func|False>: activation method or method_name
+        act_config<dict>: kwarg-dict for activation function after each conv
     """
     #
     # CONSTANTS
@@ -60,7 +76,7 @@ class Conv(nn.Module):
             out_chs=[out_ch]*depth
         self.out_ch=out_chs[-1]
         if kernel_sizes is None:
-            kernel_sizes=[kernel_size]*depth
+            kernel_sizes=[kernel_size]*len(out_chs)
         self.padding=padding
         self.conv_blocks=self._conv_blocks(
             in_ch,
@@ -124,16 +140,25 @@ class Conv(nn.Module):
 
 class Dense(nn.Module):
     r""" Dense Block
-    
     Args:
-        in_ch (int): Number of channels in input
-        out_ch (int <None>): Number of channels in output (if None => in_ch)
-        out_chs: LIST
-        depth (int <2>): The number of convolutional layers 
-        batch_norm (bool <True>): Add batch norm after conv
-        dropout (False|float <False>): Dropout to be applied after Conv
-        act (str <'relu'>): Method name of activation function after each Conv Layer
-        act_config (dict <{}>): Kwargs for activation function after each Conv Layer
+        in_ch<int>: Number of features in input
+        out_ch<int|None>: 
+            - number of features in output
+            - only valid if out_chs is None
+            - if None, out_ch=in_ch
+        out_chs<list|None>:
+            - list of output features from each dense/linear layer 
+            - if None out_chs=[out_ch]*depth
+        depth<int>: 
+            - the number of dense/linear layers 
+            - only valid if out_chs is None
+        batch_norm<bool>: add batch norm after each dense/linear layer 
+        dropout<bool|float>:
+            - if truthy dropout applied after each dense/linear layer 
+            - if float dropout rate = dropout
+            - else dropout rate=0.5
+        act<str|func|False>: activation method or method_name
+        act_config<dict>: kwarg-dict for activation function after each dense/linear layer 
     """
     #
     # PUBLIC METHODS
