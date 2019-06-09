@@ -1,6 +1,6 @@
 import torch.nn as nn
-import antorchita.helpers as h
-import antorchita.functional as f
+import torch_kit.helpers as h
+import torch_kit.functional as f
 
 
 

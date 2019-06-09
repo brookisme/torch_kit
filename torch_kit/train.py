@@ -1,9 +1,9 @@
 import os
 from datetime import datetime
 import torch
-import antorchita.helpers as h
-import antorchita.metrics as metrics
-from antorchita.callbacks import Callbacks, History
+import torch_kit.helpers as h
+import torch_kit.metrics as metrics
+from torch_kit.callbacks import Callbacks, History
 
 
 

@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-import antorchita.helpers as h
+import torch_kit.helpers as h
 from sklearn.metrics import confusion_matrix
 
 DEFAULT_BETA=2

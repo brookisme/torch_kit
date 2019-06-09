@@ -1,9 +1,9 @@
 import torch
 import pandas as pd
 import numpy as np
-import antorchita.helpers as h
-import antorchita.metrics as metrics
-import antorchita.utils.multiprocessing as mproc
+import torch_kit.helpers as h
+import torch_kit.metrics as metrics
+import torch_kit.utils.multiprocessing as mproc
 
 CATEGORY_NAME_TMPL='c{}'
 BAND_NAME_TMPL='b{}'
