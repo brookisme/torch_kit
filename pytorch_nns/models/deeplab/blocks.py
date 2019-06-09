@@ -16,6 +16,15 @@ CROP_TODO="TODO: Need to crop 1x1 Conv to implement non-same padding"
 class ASPP(nn.Module):
     """ Atrous Spatial Pyramid Pooling
 
+    1. Stack [in_ch=>out_ch]: 
+        - atrous convs:
+            a. atrous conv
+            c. BN-ReLU 
+        - pooling:
+            a. adaptive-avg|max-pooling
+            b. 1x1 conv (in_ch=>out_ch)
+            c. BN-ReLU
+
     Args:
         in_ch<int>: number of input channels
         out_ch<int|None>: if out_ch is None out_ch=in_ch
@@ -45,6 +54,7 @@ class ASPP(nn.Module):
             dilations=[1,6,12,18],
             pooling=AVERAGE,
             batch_norm=True,
+            relu=True,
             bias=None,
             out_kernel_size=1,
             out_batch_norm=True,
@@ -57,12 +67,12 @@ class ASPP(nn.Module):
         self.in_ch=in_ch
         self.out_ch=out_ch
         self.nb_aconvs=len(kernel_sizes)
-        if not bias:
+        if bias is None:
             bias=(not batch_norm)
         self.batch_norm=batch_norm
+        self.relu=relu
         self.bias=bias
         self.pooling=self._pooling(pooling)
-        self.batch_norms=self._batch_norms(batch_norm)
         self.aconv_list=self._aconv_list(kernel_sizes,dilations)
         self.out_conv=self._out_conv(out_kernel_size,out_batch_norm)
         self.act=activation(act,**act_config)
@@ -93,9 +103,10 @@ class ASPP(nn.Module):
             padding=same_padding(kernel,dilation),
             bias=self.bias)
         layers=[aconv]
-        if self.batch_norms:
-            layers.append(self.batch_norms[index])
-        # RELU?
+        if self.batch_norm:
+            layers.append(nn.BatchNorm2d(self.out_ch))
+        if self.relu:
+            layers.append(nn.ReLU())
         return nn.Sequential(*layers)
 
 
@@ -107,28 +118,22 @@ class ASPP(nn.Module):
                 pooling=nn.AdaptiveMaxPool2d((1,1))
             else:
                 raise NotImplementedError("pooling must be 'avg' or 'max'")
-            pooling=nn.Sequential(
+            layers=[
                 pooling,
                 nn.Conv2d(
                     self.in_ch, 
                     self.out_ch, 
                     kernel_size=1, 
                     stride=1,
-                    bias=False),
-                nn.BatchNorm2d(self.out_ch),
-                nn.ReLU())
-            # REMOVE RELU?
+                    bias=False)]
+            if self.batch_norm:
+                layers.append(nn.BatchNorm2d(self.out_ch))
+            if self.relu:
+                layers.append(nn.ReLU())
+            pooling=nn.Sequential(*layers)
         else:
             pooling=False
         return pooling
-
-
-    def _batch_norms(self,batch_norm):
-        if batch_norm:
-            batch_norms=[ nn.BatchNorm2d(self.out_ch) for _ in range(self.nb_aconvs) ]
-        else:
-            batch_norms=False
-        return batch_norms
 
 
     def _out_conv(self,kernel_size,batch_norm):
