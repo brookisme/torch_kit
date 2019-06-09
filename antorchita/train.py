@@ -1,9 +1,9 @@
 import os
 from datetime import datetime
 import torch
-import pytorch_nns.helpers as h
-import pytorch_nns.metrics as metrics
-from pytorch_nns.callbacks import Callbacks, History
+import antorchita.helpers as h
+import antorchita.metrics as metrics
+from antorchita.callbacks import Callbacks, History
 
 
 

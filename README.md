@@ -5,8 +5,8 @@
 ##### INSTALL
 
 ```bash
-git clone https://github.com/brookisme/pytorch-nns.git
-cd pytorch-nns
+git clone https://github.com/brookisme/antorchita.git
+cd antorchita
 pip install -e .
 ```
 

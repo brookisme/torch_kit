@@ -1,6 +1,6 @@
 import math
 import torch
-import pytorch_nns.helpers as h
+import antorchita.helpers as h
 import numpy as np
 #
 # CONFIG

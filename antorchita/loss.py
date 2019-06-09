@@ -1,6 +1,6 @@
 import torch.nn as nn
-import pytorch_nns.helpers as h
-import pytorch_nns.functional as f
+import antorchita.helpers as h
+import antorchita.functional as f
 
 
 
