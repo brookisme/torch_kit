@@ -1,4 +1,4 @@
-### PyTorch Neural Networks (WIP)
+### Pytorch Training and Helper Modules
 
 ---
 
