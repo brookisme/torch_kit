@@ -217,6 +217,10 @@ class Trainer(object):
             epoch,
             loader,
             mode):
+        if mode=='train':
+            self.model=self.model.train()
+        else:
+            self.model=self.model.eval()
         self._update_state(mode=mode)
         self.callbacks.on_epoch_begin(**self._state())
         for i,batch in enumerate(loader):
