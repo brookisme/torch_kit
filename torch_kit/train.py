@@ -54,6 +54,7 @@ class Trainer(object):
         self.name=name
         self.weights_dir=weights_dir
         self.callbacks=False
+        self.best_weights_path=None
         if criterion and optimizer:
             self.compile(criterion=criterion,optimizer=optimizer)
 
@@ -79,7 +80,7 @@ class Trainer(object):
 
 
     def report(self):
-        if self.timestamp:
+        if self.best_weights_path:
             print(f"Trainer.{self.name}.{self.timestamp}:")
             print(f"\t best_epoch: {self.best_epoch}")
             print(f"\t best_loss: {self.best_loss}")
@@ -295,3 +296,5 @@ class Trainer(object):
 
     def _get_timestamp(self,none=False):
         return datetime.now().strftime(TS_FMT)
+
+
