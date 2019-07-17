@@ -3,7 +3,7 @@ setup(
   name = 'torch_kit',
   packages = ['torch_kit'],
   version = '0.0.0.1',
-  description = 'PyTorch Neural Networks: models and utilities',
+  description = 'Torch Kit: PyTorch Utilities',
   author = 'Brookie Guzder-Williams',
   author_email = 'brook.williams@gmail.com',
   url = 'https://github.com/brookisme/torch_kit',
