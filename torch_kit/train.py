@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 import torch
+import torch.nn as nn
 import torch_kit.helpers as h
 import torch_kit.metrics as metrics
 from torch_kit.callbacks import Callbacks, History
@@ -34,7 +35,7 @@ COMPUTED_STATE_ATTRIBUTES=[
 STATE_ATTRIBUTES=BASE_STATE_ATTRIBUTES+COMPUTED_STATE_ATTRIBUTES
 CALLBACK_ERROR='Trainer: callbacks already set. use force=True to override'
 DOUBLE='DoubleTensor'
-
+SKIPPED='skipped'
 
 
 #
@@ -120,8 +121,10 @@ class Trainer(object):
     def fit(self,
             train_loader,
             valid_loader=None,
+            valid_reducer=None,
             nb_epochs=1,
             accuracy_method=None,
+            accuracy_activation=None,
             round_prediction=False,
             early_stopping=False,
             patience=0,
@@ -132,6 +135,7 @@ class Trainer(object):
         self.timestamp=self._get_timestamp()
         self._reset_state(nb_epochs=nb_epochs)
         self.best_loss=initial_loss
+        self.valid_reducer=valid_reducer
         self.best_acc=-1
         self.best_epoch=0
         self.save_best=save_best
@@ -141,6 +145,7 @@ class Trainer(object):
         self.patience_start=patience_start
         self.patience_count=0
         self.accuracy_method=accuracy_method or metrics.batch_accuracy(round_prediction)
+        self.accuracy_activation=self._get_accuracy_activation(accuracy_activation)
         self.callbacks.on_train_begin(**self._state())
         for epoch in range(1,nb_epochs+1):
             self._reset_state(epoch=epoch)
@@ -150,22 +155,28 @@ class Trainer(object):
                 mode='train')
             # validation
             if valid_loader:
-                with torch.no_grad():
-                    self.callbacks.on_validation_begin(**self._state())
-                    self._run_epoch(
+                if (not self.valid_reducer) or ((epoch-1)%self.valid_reducer is 0):
+                    with torch.no_grad():
+                        self.callbacks.on_validation_begin(**self._state())
+                        self._run_epoch(
+                            epoch=epoch,
+                            loader=valid_loader,
+                            mode='valid')
+                        self.callbacks.on_validation_end(**self._state())
+                    is_best=self._check_for_best(
                         epoch=epoch,
-                        loader=valid_loader,
-                        mode='valid')
-                    self.callbacks.on_validation_end(**self._state())
-                is_best=self._check_for_best(
-                    epoch=epoch,
-                    loss=self.val_loss,
-                    acc=self.val_acc)
+                        loss=self.val_loss,
+                        acc=self.val_acc)
+                else:
+                    is_best=SKIPPED
             else:
                 is_best=self._check_for_best(epoch=epoch,loss=self.loss,acc=self.acc)
             if is_best:
                 if self.save_best:
-                    self.best_weights_path=self.save_weights(tag='best',noisy=False)
+                    if is_best is True:
+                        self.best_weights_path=self.save_weights(tag='best',noisy=False)
+                    else:
+                        self.save_weights(tag='skip',noisy=False)
             elif self.early_stopping:
                 if not self._check_patience(epoch):
                     break
@@ -182,6 +193,18 @@ class Trainer(object):
     def _reset_state(self,**kwargs):
         for attr in STATE_ATTRIBUTES:
             setattr(self,attr,kwargs.get(attr,0))
+
+
+    def _get_accuracy_activation(self,act):
+        if isinstance(act,str):
+            act=act.lower()
+            if act=='sigmoid':
+                act=nn.Sigmoid()
+            elif act=='softmax':
+                act=nn.Softmax()
+        elif act is True:
+            act=nn.Sigmoid()
+        return act
 
 
     def _state(self):
@@ -237,6 +260,8 @@ class Trainer(object):
         outputs=self.model(inputs)
         self.callbacks.on_forward_end(**self._state())
         loss=self.criterion(outputs,targets)
+        if self.accuracy_activation:
+            outputs=self.accuracy_activation(outputs)
         self._update_state(
             mode=mode,
             batch_loss=loss.item(),
