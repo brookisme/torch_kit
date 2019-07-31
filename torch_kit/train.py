@@ -42,7 +42,30 @@ SKIPPED='skipped'
 # TRAINER
 #
 class Trainer(object):
+    """ pytorch training loop
 
+    Usage:
+        * create instance: trn=Trainer(...) 
+        * train: trn.fit(...)
+        * load best weights to model: trn.load_weights()
+        * plot history: trn.callbacks.get('history').plot()
+
+    Args:
+        model<nn.Module>: pytorch model
+        criterion<criterion|None>: 
+            - pytorch criterion
+            - can be set later with .compile(...)
+            - if criterion and optimizer are provide .compile() is automatically called
+        optimizer<optimizer|None>: 
+            - pytorch optimizer
+            - can be set later with .compile(...)
+            - if criterion and optimizer are provide .compile() is automatically called
+        name<str>: weights are saved to files containing this name and a timestamp
+        weights_dir<str>: 
+            - directory for weights
+            - defaults to `weights/` in current directory
+        force_cpu<bool>: if true run on cpu even if gpu exists
+    """ 
     def __init__(self,
             model,
             criterion=None,
