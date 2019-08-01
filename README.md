@@ -56,6 +56,11 @@ model=H.get_model(
 """ or """
 
 # initialize model with weight initializer 
+def weights_init(m):
+    if isinstance(m, nn.Conv2d):
+        nn.init.kaiming_uniform_(m.weight, a=0, mode='fan_in', nonlinearity='relu')
+    return 
+    
 model=H.get_model(
     net=NNModel,
     config=model_config,
