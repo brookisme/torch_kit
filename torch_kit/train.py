@@ -46,6 +46,7 @@ class Trainer(object):
 
     Usage:
         * create instance: trn=Trainer(...) 
+        * set_callbacks: trn.set_callbacks(...)
         * train: trn.fit(...)
         * load best weights to model: trn.load_weights()
         * plot history: trn.callbacks.get('history').plot()
