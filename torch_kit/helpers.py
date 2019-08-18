@@ -122,15 +122,15 @@ def get_model(
     return model
 
 
-def freeze_layer(layer):
+def freeze_layer(layer,unfreeze=False):
     for param in layer.parameters():
-        param.requires_grad=False
-        
+        param.requires_grad=(not unfreeze)
 
-def freeze_layers(model,end=None,start=None):
+
+def freeze_layers(model,unfreeze=False,end=None,start=None):
     layer_list=list(model.children())
     for layer in layer_list[start:end]:
-        freeze_layer(layer)
+        freeze_layer(layer,unfreeze=unfreeze)
 
 
 def trainable_params(model):
