@@ -1,4 +1,5 @@
 import os
+import pickle
 import logging
 from datetime import datetime
 import matplotlib.pyplot as plt
@@ -11,6 +12,8 @@ ROW_TMPL='{:^10} {:^10} | {:^10} {:^10} | {:^10} {:^10}'
 DEFAULT_NAME='history'
 DEFAULT_DIR='history'
 DEFAULT_LOG_DIR='logs'
+
+
 
 class History(Callback):
 
@@ -88,33 +91,7 @@ class History(Callback):
 
 
     def plot(self,batch=False,show=True,figsize=(12,3)):
-        hist=self.history
-        fig,axs=plt.subplots(1,2,figsize=figsize)
-        thist=hist['train']
-        vhist=hist['valid']
-        if batch:
-            loss_key='batch_loss'
-            acc_key='batch_acc'
-            loss_title='BATCH LOSS'
-            acc_title='BATCH ACCURACY'
-        else:
-            loss_key='loss'
-            acc_key='acc' 
-            loss_title='LOSS'
-            acc_title='ACCURACY'    
-        # loss
-        plt.legend(loc='best')
-        axs[0].set_title(loss_title)
-        axs[0].plot(thist.get(loss_key))
-        if vhist:
-            axs[0].plot(vhist.get(loss_key))
-        # acc
-        axs[1].set_title(acc_title)
-        axs[1].plot(thist.get(acc_key))
-        if vhist:
-            axs[1].plot(vhist.get(acc_key))
-        if show:
-            plt.show()
+        plot(self.history,batch=batch,show=show,figsize=figsize)
 
 
     #
@@ -228,6 +205,44 @@ class History(Callback):
 
 
 
+#
+# HELPER METHODS
+#
+def _load_pickle(path):
+    with open(path,"rb") as f:
+        obj=pickle.load(f)
+    return obj
+
+
+def plot(hist,batch=False,show=True,figsize=(12,3)):
+    if isinstance(hist,str):
+        hist=_load_pickle(hist)
+    fig,axs=plt.subplots(1,2,figsize=figsize)
+    thist=hist['train']
+    vhist=hist['valid']
+    if batch:
+        loss_key='batch_loss'
+        acc_key='batch_acc'
+        loss_title='BATCH LOSS'
+        acc_title='BATCH ACCURACY'
+    else:
+        loss_key='loss'
+        acc_key='acc' 
+        loss_title='LOSS'
+        acc_title='ACCURACY'    
+    # loss
+    plt.legend(loc='best')
+    axs[0].set_title(loss_title)
+    axs[0].plot(thist.get(loss_key))
+    if vhist:
+        axs[0].plot(vhist.get(loss_key))
+    # acc
+    axs[1].set_title(acc_title)
+    axs[1].plot(thist.get(acc_key))
+    if vhist:
+        axs[1].plot(vhist.get(acc_key))
+    if show:
+        plt.show()
 
 
 

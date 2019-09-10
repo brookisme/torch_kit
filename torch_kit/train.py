@@ -135,10 +135,10 @@ class Trainer(object):
         if not path:
             path=self.best_weights_path
         if noisy:
-            print(f"Trainer.loading_weights: {self.best_weights_path}")
+            print(f"Trainer.loading_weights: {path}")
         h.load_weights(
             self.model,
-            self.best_weights_path,
+            path,
             device=self.device)
 
 
