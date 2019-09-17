@@ -91,7 +91,7 @@ def get_device(force_cpu=False):
 
 
 def load_weights(model,weights_path,device=None,map_location=None):
-    if not map_location:
+    if map_location is None:
         if device and (device.type=='cpu'):
             map_location='cpu'
     state_dict=torch.load(weights_path,map_location=map_location)
