@@ -18,6 +18,7 @@ setup(
   classifiers = [],
   entry_points={
       'console_scripts': [
+        'torch_kit=torch_kit.cli.cli:cli'
       ]
   }
 )
