@@ -1,12 +1,12 @@
 import os,sys
 sys.path.append(os.getcwd())
 from importlib import import_module
-
+import torch_kit.train as train
+import torch_kit.metrics as metrics
 
 DEFAULT_LRS=[1e-3]
 DEFAULT_OPTIMIZER='adam'
 CONFIG_ERROR='config should be named (ie { name: config_dict })'
-
 
 from pprint import pprint
 
@@ -22,43 +22,20 @@ class TrainManager(object):
             raise ValueError(CONFIG_ERROR)
 
 
-    def run(self,dev=True,dry_run=True,noise_reducer=None):
-        train_loader,valid_loader=self._get_method('loaders')(
-            dev=dev,
-            **self.config['loaders'])
-        self.train(
-                model=self._get_method('model')(**self.config['model']),
-                train_loader=train_loader,
-                valid_loader=valid_loader,
-                criterion=self._get_method('criterion')(**self.config['criterion']),
-                optimizer=self._optimizer(**self.config['optimizer']),
-                name=self.config.get('name'), 
-                lrs=self.config.get('lrs'),
-                dry_run=dry_run,
-                noise_reducer=noise_reducer)
-
-
-    def train(self,
-            model,
-            train_loader,
-            valid_loader,
-            criterion,
-            weights=None,
-            name=None,
-            optimizer=None,
-            lrs=None,
+    def run(self,
+            dev=True,
             dry_run=True,
-            noise_reducer=None):
-        if not name:
-            name=DEFAULT_NAME
-        if not lrs:
-            lrs=DEFAULT_LRS
-        if not optimizer:
-            optimizer=DEFAULT_OPTIMIZER
-        #
+            noise_reducer=None,
+            poweroff=False,
+            poweroff_wait=30):
+        # parse config
+        train_loader,valid_loader=self._get('loaders',dev=dev)
+        model=self._get('model')
+        criterion=self._get('criterion')
+        optimizer=self._get('optimizer',DEFAULT_OPTIMIZER)
+        lrs=self.config.get('lrs',DEFAULT_LRS)
         # run
-        #
-        trainer=train.Trainer( model=model, name=name )
+        trainer=train.Trainer( model=model, name=self.name )
         trainer.set_callbacks(
             save=True,
             silent=False,
@@ -84,13 +61,50 @@ class TrainManager(object):
                         early_stopping=True,
                         patience=PATIENCE,
                         patience_start=0)
+            self._exit(poweroff,poweroff_wait,dev,dry_run)
 
 
-    def _get_method(self,method_name):
-        print('---',method_name)
-        return getattr(self.module,method_name)
+    #
+    # INTERNAL METHODS
+    #
+    def _get(self,method_name,config_name=None,**kwargs):
+        if not config_name:
+            config_name=method_name
+        cfig=self.config.get(config_name,{})
+        cfig.update(kwargs)
+        return getattr(self.module,method_name)(**cfig)
 
 
-    def _optimizer(self,config):
-        opt=self._get_method('optimizer')(**config)
-        return opt
+    def _exit(self,poweroff,poweroff_wait,dev,dry_run):
+        poweroff=(not dry_run) and (not dev) and poweroff
+        print('\n'*10)
+        print('*'*100)
+        print('\n'*5)
+        print('*'*50)
+        print('*'*50)
+        print('*'*50)
+        print('*'*50)
+        if poweroff:
+            print(f'TURNING OFF COMPUTER IN {poweroff_wait} MINUTES')
+            sleep(60*POWEROFF_TIME)
+            os.system('sudo poweroff')
+        else:
+            print(f'DRY_RUN: {dry_run}')
+            print(f'DEV: {dev}')
+            print(f'POWEROFF: {poweroff}')
+            print(f'POWEROFF_WAIT: {poweroff_wait} MINUTES')
+        print('*'*50)
+        print('*'*50)
+        print('*'*50)
+        print('*'*50)
+        print('\n'*5)
+        print('*'*100)
+        print('\n'*10)
+        if poweroff:
+            print('')
+            print('...')
+            sleep(60*poweroff_wait)
+            print('goodbye')
+            os.system('sudo poweroff')
+
+

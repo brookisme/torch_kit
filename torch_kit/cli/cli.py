@@ -63,15 +63,11 @@ def cli(ctx):
 @click.pass_context
 def train_model(ctx,module,dev,dry_run):
     args,kwargs=_args_kwargs(ctx.args)
-    print(args)
-    print(kwargs)
     if args:
         config=args[0]
     else:
         config=module
-    print('train',module,config,dev,dry_run)
     train_configs=_get_training_configs(config)
-    pprint(train_configs)
     for cfig in train_configs:
         tm=train.TrainManager(module,cfig)
         tm.run(dev,dry_run)
