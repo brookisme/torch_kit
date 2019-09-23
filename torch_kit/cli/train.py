@@ -5,15 +5,21 @@ from importlib import import_module
 
 DEFAULT_LRS=[1e-3]
 DEFAULT_OPTIMIZER='adam'
+CONFIG_ERROR='config should be named (ie { name: config_dict })'
 
+
+from pprint import pprint
 
 class TrainManager(object):
 
 
     def __init__(self,module_name,config):
         self.module=import_module(module_name)
-        print(self.module)
-        self.config=config
+        if len(config)==1:
+            self.name=next(iter(config.keys()))
+            self.config=next(iter(config.values()))
+        else:
+            raise ValueError(CONFIG_ERROR)
 
 
     def run(self,dev=True,dry_run=True,noise_reducer=None):
