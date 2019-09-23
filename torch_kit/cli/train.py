@@ -6,6 +6,10 @@ import torch_kit.metrics as metrics
 
 DEFAULT_LRS=[1e-3]
 DEFAULT_OPTIMIZER='adam'
+DEFAULT_WEIGHTS_DIR='weights'
+NB_EPOCHS=50
+DEV_NB_EPOCHS=2
+PATIENCE=4
 CONFIG_ERROR='config should be named (ie { name: config_dict })'
 
 from pprint import pprint
@@ -34,6 +38,12 @@ class TrainManager(object):
         criterion=self._get('criterion')
         optimizer=self._get('optimizer',DEFAULT_OPTIMIZER)
         lrs=self.config.get('lrs',DEFAULT_LRS)
+        if dev:
+            nb_epochs=DEV_NB_EPOCHS
+        else:
+            nb_epochs=self.config.get('nb_epochs',NB_EPOCHS)
+        patience=self.config.get('patience',PATIENCE)
+        weights=self.config.get('weights')
         # run
         trainer=train.Trainer( model=model, name=self.name )
         trainer.set_callbacks(
@@ -42,8 +52,37 @@ class TrainManager(object):
             noise_reducer=noise_reducer,
             name=trainer.name )
         if weights:
-            print(f"LOADING WEIGHTS: {weights}")
+            weights_dir=self.config.get('weights_dir')
+            if weights_dir is None:
+                weights_dir=DEFAULT_WEIGHTS_DIR
+            if weights_dir:
+                weights=f'{weights_dir}/{weights}'
             trainer.load_weights(weights)
+        print('\n'*4)
+        print('*'*100)
+        print('*'*100)
+        print('*'*100)
+        print()
+        print(f"NAME: {self.name}")
+        if weights:
+            print(f"INIT WEIGHTS: {weights}")
+        print(f"LRS: {lrs}")
+        if valid_loader:
+            nb_valid=len(valid_loader)
+        else:
+            nb_valid=' --- '
+        print(f"NB_EPOCHS: {nb_epochs}")
+        print(f"NB_BATCHES:",len(train_loader),nb_valid)
+        print(f"PATIENCE: {patience}")
+        print()
+        print('='*100)
+        print()
+        pprint(self.config)
+        print()
+        print('*'*100)
+        print('*'*100)
+        print('*'*100)
+        print('\n'*4)
         for i,lr in enumerate(lrs):
             print()
             print('-'*100)
@@ -55,13 +94,13 @@ class TrainManager(object):
                     optimizer=optimizer(trainer.model.parameters(),lr=lr))
                 trainer.fit(
                         accuracy_method=metrics.batch_accuracy(pred_argmax=True),
-                        nb_epochs=NB_EPOCHS,
+                        nb_epochs=nb_epochs,
                         train_loader=train_loader,
                         valid_loader=valid_loader,
                         early_stopping=True,
-                        patience=PATIENCE,
+                        patience=patience,
                         patience_start=0)
-            self._exit(poweroff,poweroff_wait,dev,dry_run)
+        self._exit(poweroff,poweroff_wait,dev,dry_run)
 
 
     #
@@ -86,8 +125,6 @@ class TrainManager(object):
         print('*'*50)
         if poweroff:
             print(f'TURNING OFF COMPUTER IN {poweroff_wait} MINUTES')
-            sleep(60*POWEROFF_TIME)
-            os.system('sudo poweroff')
         else:
             print(f'DRY_RUN: {dry_run}')
             print(f'DEV: {dev}')

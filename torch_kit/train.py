@@ -134,12 +134,15 @@ class Trainer(object):
     def load_weights(self,path=None,noisy=True):
         if not path:
             path=self.best_weights_path
-        if noisy:
-            print(f"Trainer.loading_weights: {path}")
-        h.load_weights(
-            self.model,
-            path,
-            device=self.device)
+        if path:
+            if noisy:
+                print(f"Trainer.loading_weights: {path}")
+            h.load_weights(
+                self.model,
+                path,
+                device=self.device)
+        else:
+            print(f"[WARN] Trainer.loading_weights: no weights to be loaded. skipping")
 
 
     def fit(self,
