@@ -1,8 +1,10 @@
 import os,sys
 sys.path.append(os.getcwd())
 from importlib import import_module
+from torchsummary import summary
 import torch_kit.train as train
 import torch_kit.metrics as metrics
+import torch_kit.helpers as h
 
 DEFAULT_LRS=[1e-3]
 DEFAULT_OPTIMIZER='adam'
@@ -11,8 +13,12 @@ NB_EPOCHS=50
 DEV_NB_EPOCHS=2
 PATIENCE=4
 CONFIG_ERROR='config should be named (ie { name: config_dict })'
+PRINT_SUMMARY=True
+SIZE=256
+
 
 from pprint import pprint
+
 
 class TrainManager(object):
 
@@ -32,10 +38,17 @@ class TrainManager(object):
             dry_run=True,
             noise_reducer=None,
             poweroff=False,
-            poweroff_wait=30):
+            poweroff_wait=30,
+            print_summary=PRINT_SUMMARY):
         # parse config
         train_loader,valid_loader=self._get('loaders',dev=dev)
         model=self._get('model')
+        if print_summary:
+            pprint(self.config)
+            mcfig=self.config['model']
+            size=mcfig.get('size',SIZE)
+            in_ch=mcfig['in_ch']
+            summary(model.to(h.get_device()),(in_ch,size,size))
         criterion=self._get('criterion')
         optimizer=self._get('optimizer',DEFAULT_OPTIMIZER)
         lrs=self.config.get('lrs',DEFAULT_LRS)

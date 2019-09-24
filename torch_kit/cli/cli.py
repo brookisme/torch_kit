@@ -15,14 +15,20 @@ DRY_RUN=c.get('dry_run')
 RUN_KEY=c.get('run_key')
 DEV_HELP='<bool> reduce the amount of data for a quick test run'
 DRY_RUN_HELP='<bool> load data and model, loop through runs but skip training'
-POWER_OFF=True
-POWER_OFF_WAIT=30
+NOISE_REDUCER=None
+POWEROFF=True
+POWEROFF_WAIT=30
+PRINT_SUMMARY=True
 ARG_KWARGS_SETTINGS={
     'ignore_unknown_options': True,
     'allow_extra_args': True
 }
 TRAIN_HELP='train your model'
 SCORE_HELP='produce scores for your model'
+NOISE_REDUCER_HELP='print every N lines'
+POWEROFF_HELP='poweroff after training'
+POWEROFF_WAIT_HELP='number of minutes after training to wait before poweroff'
+PRINT_SUMMARY_HELP='print model summary'
 """ THOUGHTS
 
 torch_kit train dlv3p  --- uses dlv3p.py and dlv3p.yaml (== dlv3p.run or just dlv3p)
@@ -60,8 +66,35 @@ def cli(ctx):
     help=DRY_RUN_HELP,
     default=DRY_RUN,
     type=bool)
+@click.option(
+    '--noise_reducer',
+    help=NOISE_REDUCER_HELP,
+    default=NOISE_REDUCER,
+    type=int)
+@click.option(
+    '--poweroff',
+    help=POWEROFF_HELP,
+    default=POWEROFF,
+    type=bool)
+@click.option(
+    '--poweroff_wait',
+    help=POWEROFF_WAIT_HELP,
+    default=POWEROFF_WAIT,
+    type=int)
+@click.option(
+    '--summary',
+    help=PRINT_SUMMARY_HELP,
+    default=PRINT_SUMMARY,
+    type=bool)
 @click.pass_context
-def train_model(ctx,module,dev,dry_run):
+def train_model(ctx,
+        module,
+        dev,
+        dry_run,
+        noise_reducer,
+        poweroff,
+        poweroff_wait,
+        summary):
     args,kwargs=_args_kwargs(ctx.args)
     if args:
         config=args[0]
@@ -70,7 +103,13 @@ def train_model(ctx,module,dev,dry_run):
     train_configs=_get_training_configs(config)
     for cfig in train_configs:
         tm=train.TrainManager(module,cfig)
-        tm.run(dev,dry_run)
+        tm.run(
+            dev=dev,
+            dry_run=dry_run,
+            noise_reducer=noise_reducer,
+            poweroff=poweroff,
+            poweroff_wait=poweroff_wait,
+            print_summary=summary)
 
 
 @click.command(
