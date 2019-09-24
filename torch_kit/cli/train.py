@@ -20,8 +20,9 @@ class TrainManager(object):
     def __init__(self,module_name,config):
         self.module=import_module(module_name)
         if len(config)==1:
-            self.name=next(iter(config.keys()))
+            config_name=next(iter(config.keys()))
             self.config=next(iter(config.values()))
+            self.name=f'{module_name}.{config_name}'
         else:
             raise ValueError(CONFIG_ERROR)
 
