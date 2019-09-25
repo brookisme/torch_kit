@@ -36,7 +36,8 @@ STATE_ATTRIBUTES=BASE_STATE_ATTRIBUTES+COMPUTED_STATE_ATTRIBUTES
 CALLBACK_ERROR='Trainer: callbacks already set. use force=True to override'
 DOUBLE='DoubleTensor'
 SKIPPED='skipped'
-
+WRITE_REPORT=True
+REPORTS_DIR='reports'
 
 #
 # TRAINER
@@ -73,11 +74,15 @@ class Trainer(object):
             optimizer=None,
             name=DEFAULT_NAME,
             weights_dir=WEIGHTS_DIR,
+            reports_dir=REPORTS_DIR,
+            write_report=WRITE_REPORT,
             force_cpu=False):
         self.device=h.get_device(force_cpu)
         self.model=model.to(self.device)
         self.name=name
         self.weights_dir=weights_dir
+        self.reports_dir=reports_dir
+        self.write_report=write_report
         self.callbacks=False
         self.best_weights_path=None
         if criterion and optimizer:
@@ -104,19 +109,25 @@ class Trainer(object):
             raise ValueError(CALLBACK_ERROR)
 
 
-    def report(self):
+    def report(self,write=False):
+        if write:
+            os.makedirs(self.reports_dir,exist_ok=True)
+            name=f"{self.reports_dir}/report.{self.name}.{self.timestamp}.txt"
+            file=open(name,"w")
+        else:
+            file=False
         if self.best_weights_path:
-            print(f"Trainer.{self.name}.{self.timestamp}:")
-            print(f"\t best_epoch: {self.best_epoch}")
-            print(f"\t best_loss: {self.best_loss}")
-            print(f"\t best_acc: {self.best_acc}")
+            self._print(f"Trainer.{self.name}.{self.timestamp}:",file)
+            self._print(f"\t best_epoch: {self.best_epoch}",file)
+            self._print(f"\t best_loss: {self.best_loss}",file)
+            self._print(f"\t best_acc: {self.best_acc}",file)
             if self.save_best:
-                print("\t",self.best_weights_path)
+                self._print(f"\t {self.best_weights_path}",file)
             if self.save_all:
-                print("\t",self.weights_path)
+                self._print(f"\t {self.weights_path}",file)
+        if file: file.close() 
         else:
             print("Trainer: No training to report")
-
 
 
     def save_weights(self,
@@ -211,7 +222,7 @@ class Trainer(object):
                 self.weights_path=self.save_weights(noisy=False)
             self.callbacks.on_epochs_complete(**self._state())
         self.callbacks.on_train_end(**self._state())
-        self.report()
+        self.report(self.write_report)
 
 
     #
@@ -344,6 +355,12 @@ class Trainer(object):
                 path=f'{path}.{self.timestamp}'
             path=f'{path}.p'
         return path
+
+
+    def _print(self,msg,file=False):
+        print(msg)
+        if file:
+            file.write(f"{msg}\n")
 
 
     def _get_timestamp(self,none=False):

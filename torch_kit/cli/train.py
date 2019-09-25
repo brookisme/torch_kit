@@ -25,6 +25,7 @@ POWEROFF=c.get('poweroff')
 POWEROFF_WAIT=c.get('poweroff_wait')
 PRINT_SUMMARY=c.get('print_summary')
 
+
 from pprint import pprint
 
 
