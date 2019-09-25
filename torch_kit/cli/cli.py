@@ -13,16 +13,16 @@ from pprint import pprint
 IS_DEV=c.get('is_dev')
 DRY_RUN=c.get('dry_run')
 RUN_KEY=c.get('run_key')
-DEV_HELP='<bool> reduce the amount of data for a quick test run'
-DRY_RUN_HELP='<bool> load data and model, loop through runs but skip training'
-NOISE_REDUCER=None
-POWEROFF=True
-POWEROFF_WAIT=30
-PRINT_SUMMARY=True
+NOISE_REDUCER=c.get('noise_reducer')
+POWEROFF=c.get('poweroff')
+POWEROFF_WAIT=c.get('poweroff_wait')
+PRINT_SUMMARY=c.get('print_summary')
 ARG_KWARGS_SETTINGS={
     'ignore_unknown_options': True,
     'allow_extra_args': True
 }
+DEV_HELP='<bool> reduce the amount of data for a quick test run'
+DRY_RUN_HELP='<bool> load data and model, loop through runs but skip training'
 TRAIN_HELP='train your model'
 SCORE_HELP='produce scores for your model'
 NOISE_REDUCER_HELP='print every N lines'
@@ -101,15 +101,23 @@ def train_model(ctx,
     else:
         config=module
     train_configs=_get_training_configs(config)
-    for cfig in train_configs:
+    last_index=len(train_configs)-1
+    for i,cfig in enumerate(train_configs):
         tm=train.TrainManager(module,cfig)
         tm.run(
             dev=dev,
             dry_run=dry_run,
             noise_reducer=noise_reducer,
-            poweroff=poweroff,
-            poweroff_wait=poweroff_wait,
             print_summary=summary)
+        if (i!=last_index):
+            print('\n'*4)
+            print('#'*100)
+            print('\n'*4)
+    tm.poweroff(            
+        poweroff=poweroff,
+        poweroff_wait=poweroff_wait,
+        dev=dev,
+        dry_run=dry_run,)
 
 
 @click.command(

@@ -5,6 +5,8 @@ from torchsummary import summary
 import torch_kit.train as train
 import torch_kit.metrics as metrics
 import torch_kit.helpers as h
+from . import config as c
+
 
 DEFAULT_LRS=[1e-3]
 DEFAULT_OPTIMIZER='adam'
@@ -13,9 +15,14 @@ NB_EPOCHS=50
 DEV_NB_EPOCHS=2
 PATIENCE=4
 CONFIG_ERROR='config should be named (ie { name: config_dict })'
-PRINT_SUMMARY=True
 SIZE=256
 
+IS_DEV=c.get('is_dev')
+DRY_RUN=c.get('dry_run')
+NOISE_REDUCER=c.get('noise_reducer')
+POWEROFF=c.get('poweroff')
+POWEROFF_WAIT=c.get('poweroff_wait')
+PRINT_SUMMARY=c.get('print_summary')
 
 from pprint import pprint
 
@@ -34,17 +41,14 @@ class TrainManager(object):
 
 
     def run(self,
-            dev=True,
-            dry_run=True,
-            noise_reducer=None,
-            poweroff=False,
-            poweroff_wait=30,
+            dev=IS_DEV,
+            dry_run=DRY_RUN,
+            noise_reducer=NOISE_REDUCER,
             print_summary=PRINT_SUMMARY):
         # parse config
         train_loader,valid_loader=self._get('loaders',dev=dev)
         model=self._get('model')
         if print_summary:
-            pprint(self.config)
             mcfig=self.config['model']
             size=mcfig.get('size',SIZE)
             in_ch=mcfig['in_ch']
@@ -114,21 +118,9 @@ class TrainManager(object):
                         early_stopping=True,
                         patience=patience,
                         patience_start=0)
-        self._exit(poweroff,poweroff_wait,dev,dry_run)
 
 
-    #
-    # INTERNAL METHODS
-    #
-    def _get(self,method_name,config_name=None,**kwargs):
-        if not config_name:
-            config_name=method_name
-        cfig=self.config.get(config_name,{})
-        cfig.update(kwargs)
-        return getattr(self.module,method_name)(**cfig)
-
-
-    def _exit(self,poweroff,poweroff_wait,dev,dry_run):
+    def poweroff(self,poweroff,poweroff_wait,dev,dry_run):
         poweroff=(not dry_run) and (not dev) and poweroff
         print('\n'*10)
         print('*'*100)
@@ -157,5 +149,17 @@ class TrainManager(object):
             sleep(60*poweroff_wait)
             print('goodbye')
             os.system('sudo poweroff')
+
+
+    #
+    # INTERNAL METHODS
+    #
+    def _get(self,method_name,config_name=None,**kwargs):
+        if not config_name:
+            config_name=method_name
+        cfig=self.config.get(config_name,{})
+        cfig.update(kwargs)
+        return getattr(self.module,method_name)(**cfig)
+
 
 
