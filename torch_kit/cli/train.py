@@ -60,12 +60,14 @@ class TrainManager(object):
         lrs=self.config.get('lrs',DEFAULT_LRS)
         if dev:
             nb_epochs=DEV_NB_EPOCHS
+            name=f'DEV---{self.name}'
         else:
             nb_epochs=self.config.get('nb_epochs',NB_EPOCHS)
+            name=self.name
         patience=self.config.get('patience',PATIENCE)
         weights=self.config.get('weights')
         # run
-        trainer=train.Trainer( model=model, name=self.name )
+        trainer=train.Trainer( model=model, name=name )
         trainer.set_callbacks(
             save=True,
             silent=False,
