@@ -124,7 +124,7 @@ def get_model(
 
 def freeze_layer(layer,unfreeze=False):
     for param in layer.parameters():
-        param.requires_grad=(not unfreeze)
+        param.requires_grad=unfreeze
 
 
 def freeze_layers(model,unfreeze=False,end=None,start=None):
