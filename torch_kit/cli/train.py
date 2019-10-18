@@ -47,14 +47,10 @@ class TrainManager(object):
             dry_run=DRY_RUN,
             noise_reducer=NOISE_REDUCER,
             print_summary=PRINT_SUMMARY):
+        if dev: dry_run=False
         # parse config
         train_loader,valid_loader=self._get('loaders',dev=dev)
         model=self._get('model')
-        if print_summary:
-            mcfig=self.config['model']
-            size=mcfig.get('size',SIZE)
-            in_ch=mcfig['in_ch']
-            summary(model.to(h.get_device()),(in_ch,size,size))
         criterion=self._get('criterion')
         optimizer=self._get('optimizer',DEFAULT_OPTIMIZER)
         lrs=self.config.get('lrs',DEFAULT_LRS)
@@ -65,6 +61,7 @@ class TrainManager(object):
             nb_epochs=self.config.get('nb_epochs',NB_EPOCHS)
             name=self.name
         patience=self.config.get('patience',PATIENCE)
+        mask_value=self.config.get('mask_value')
         weights=self.config.get('weights')
         # run
         trainer=train.Trainer( model=model, name=name )
@@ -80,6 +77,13 @@ class TrainManager(object):
             if weights_dir:
                 weights=f'{weights_dir}/{weights}'
             trainer.load_weights(weights)
+            if self.config.get('freeze'):
+                model=self._get('freeze',model=model)
+        if print_summary:
+            mcfig=self.config['model']
+            size=mcfig.get('size',SIZE)
+            in_ch=mcfig['in_ch']
+            summary(model.to(h.get_device()),(in_ch,size,size))
         print('\n'*4)
         print('*'*100)
         print('*'*100)
@@ -115,7 +119,9 @@ class TrainManager(object):
                     criterion=criterion,
                     optimizer=optimizer(trainer.model.parameters(),lr=lr))
                 trainer.fit(
-                        accuracy_method=metrics.batch_accuracy(pred_argmax=True),
+                        accuracy_method=metrics.batch_accuracy(
+                            pred_argmax=True,
+                            mask_value=mask_value),
                         nb_epochs=nb_epochs,
                         train_loader=train_loader,
                         valid_loader=valid_loader,
@@ -125,7 +131,7 @@ class TrainManager(object):
 
 
     def poweroff(self,poweroff,poweroff_wait,dev,dry_run):
-        poweroff=(not dry_run) and (not dev) and poweroff
+        shutdown=(not dry_run) and (not dev) and poweroff
         print('\n'*10)
         print('*'*100)
         print('\n'*5)
@@ -133,7 +139,7 @@ class TrainManager(object):
         print('*'*50)
         print('*'*50)
         print('*'*50)
-        if poweroff:
+        if shutdown:
             print(f'TURNING OFF COMPUTER IN {poweroff_wait} MINUTES')
         else:
             print(f'DRY_RUN: {dry_run}')
@@ -147,7 +153,7 @@ class TrainManager(object):
         print('\n'*5)
         print('*'*100)
         print('\n'*10)
-        if poweroff:
+        if shutdown:
             print('')
             print('...')
             sleep(60*poweroff_wait)
@@ -162,6 +168,10 @@ class TrainManager(object):
         if not config_name:
             config_name=method_name
         cfig=self.config.get(config_name,{})
+        if not isinstance(cfig,dict):
+            value=cfig
+            cfig={}
+            cfig[config_name]=value
         cfig.update(kwargs)
         return getattr(self.module,method_name)(**cfig)
 
