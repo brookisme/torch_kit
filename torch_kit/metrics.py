@@ -21,6 +21,7 @@ def accuracy(
         argmax=False,
         pred_argmax=False,
         round_prediction=False,
+        strict_equality=False,
         true_threshold=0.5,
         axis=0,
         mask_value=None):
@@ -38,7 +39,12 @@ def accuracy(
         targ=targ.long()
         test=(pred==targ)
     else:
-        test=1-torch.pow((pred-targ),2)
+        pred=pred.float()
+        targ=targ.float() 
+        if strict_equality:
+            test=(pred==targ)
+        else:    
+            test=1-torch.pow((pred-targ),2)
     if mask_value is not None:
         msk=(targ!=mask_value)
         test=test[msk]
