@@ -10,7 +10,6 @@ from . import config as c
 
 
 DEFAULT_LRS=[1e-3]
-DEFAULT_OPTIMIZER='adam'
 DEFAULT_WEIGHTS_DIR='weights'
 NB_EPOCHS=50
 DEV_NB_EPOCHS=2
@@ -52,7 +51,7 @@ class TrainManager(object):
         train_loader,valid_loader=self._get('loaders',dev=dev)
         model=self._get('model')
         criterion=self._get('criterion')
-        optimizer=self._get('optimizer',DEFAULT_OPTIMIZER)
+        optimizer=self._get('optimizer')
         lrs=self.config.get('lrs',DEFAULT_LRS)
         if dev:
             nb_epochs=DEV_NB_EPOCHS
@@ -93,10 +92,10 @@ class TrainManager(object):
         if weights:
             print(f"INIT WEIGHTS: {weights}")
         print(f"LRS: {lrs}")
-        if valid_loader:
-            nb_valid=len(valid_loader)
-        else:
+        if (valid_loader is None) or (valid_loader is False):
             nb_valid=' --- '
+        else:
+            nb_valid=len(valid_loader)
         print(f"NB_EPOCHS: {nb_epochs}")
         print(f"NB_BATCHES:",len(train_loader),nb_valid)
         print(f"PATIENCE: {patience}")

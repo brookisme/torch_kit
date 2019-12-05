@@ -214,7 +214,7 @@ def _load_pickle(path):
     return obj
 
 
-def plot(hist,batch=False,show=True,figsize=(12,3)):
+def plot(hist,batch=False,show=True,figsize=(12,3),file_path=None,**save_kwargs):
     if isinstance(hist,str):
         hist=_load_pickle(hist)
     fig,axs=plt.subplots(1,2,figsize=figsize)
@@ -241,6 +241,8 @@ def plot(hist,batch=False,show=True,figsize=(12,3)):
     axs[1].plot(thist.get(acc_key))
     if vhist:
         axs[1].plot(vhist.get(acc_key))
+    if file_path:
+        fig.savefig(file_path,**save_kwargs)
     if show:
         plt.show()
 
