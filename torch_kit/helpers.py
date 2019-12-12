@@ -77,6 +77,13 @@ def to_tensor(v):
     return v
 
 
+def get_items(*args):
+    try:
+        return list(map(lambda s: s.item(),args))
+    except:
+        return args
+
+
 def argmax(tsr_arr,axis=0):
     if torch.is_tensor(tsr_arr):
         tsr_arr=torch.argmax(tsr_arr,dim=axis)
