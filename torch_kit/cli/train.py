@@ -32,12 +32,13 @@ from pprint import pprint
 class TrainManager(object):
 
 
-    def __init__(self,module_name,config):
+    def __init__(self,module_name,config,models_config={}):
         self.module=import_module(module_name)
         if len(config)==1:
-            config_name=next(iter(config.keys()))
+            self.model_name=next(iter(config.keys()))
             self.config=next(iter(config.values()))
-            self.name=f'{module_name}.{config_name}'
+            self.name=f'{module_name}.{self.model_name}'
+            self.models_config=models_config
         else:
             raise ValueError(CONFIG_ERROR)
 
@@ -170,6 +171,8 @@ class TrainManager(object):
         if not config_name:
             config_name=method_name
         cfig=self.config.get(config_name,{})
+        if (not cfig) and (config_name=='model'):
+            cfig=self.models_config.get(self.model_name,{})
         if not isinstance(cfig,dict):
             value=cfig
             cfig={}

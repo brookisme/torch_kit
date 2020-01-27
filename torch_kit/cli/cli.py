@@ -100,10 +100,10 @@ def train_model(ctx,
         config=args[0]
     else:
         config=module
-    train_configs=_get_training_configs(config)
+    train_configs,models_config=_get_training_configs(config)
     last_index=len(train_configs)-1
     for i,cfig in enumerate(train_configs):
-        tm=train.TrainManager(module,cfig)
+        tm=train.TrainManager(module,cfig,models_config)
         tm.run(
             dev=dev,
             dry_run=dry_run,
@@ -137,13 +137,14 @@ def _get_training_configs(dot_path):
     parts=dot_path.split('.')
     fname=parts[0]
     cfig=yaml.safe_load(open(f'{parts[0]}.yaml'))
+    models_cfig=cfig.get('models',{})
     if not parts[1:]:
         parts.append(RUN_KEY)
     for p in parts[1:]:
         cfig=cfig[p]
     if not isinstance(cfig,list):
         cfig=[cfig]
-    return cfig
+    return cfig, models_cfig
 
 
 def _args_kwargs(ctx_args):
