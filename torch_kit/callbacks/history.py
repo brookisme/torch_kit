@@ -214,7 +214,15 @@ def _load_pickle(path):
     return obj
 
 
-def plot(hist,batch=False,show=True,figsize=(12,3),file_path=None,**save_kwargs):
+def plot(
+        hist,
+        batch=False,
+        show=True,
+        figsize=(12,3),
+        file_path=None,
+        epoch_start=None,
+        epoch_end=None,
+        **save_kwargs):
     if isinstance(hist,str):
         hist=_load_pickle(hist)
     fig,axs=plt.subplots(1,2,figsize=figsize)
@@ -233,14 +241,14 @@ def plot(hist,batch=False,show=True,figsize=(12,3),file_path=None,**save_kwargs)
     # loss
     plt.legend(loc='best')
     axs[0].set_title(loss_title)
-    axs[0].plot(thist.get(loss_key))
+    axs[0].plot(thist.get(loss_key)[epoch_start:epoch_end])
     if vhist:
-        axs[0].plot(vhist.get(loss_key))
+        axs[0].plot(vhist.get(loss_key)[epoch_start:epoch_end])
     # acc
     axs[1].set_title(acc_title)
-    axs[1].plot(thist.get(acc_key))
+    axs[1].plot(thist.get(acc_key)[epoch_start:epoch_end])
     if vhist:
-        axs[1].plot(vhist.get(acc_key))
+        axs[1].plot(vhist.get(acc_key)[epoch_start:epoch_end])
     if file_path:
         fig.savefig(file_path,**save_kwargs)
     if show:
