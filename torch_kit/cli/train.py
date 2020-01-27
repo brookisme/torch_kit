@@ -11,6 +11,7 @@ from . import config as c
 
 DEFAULT_LRS=[1e-3]
 DEFAULT_WEIGHTS_DIR='weights'
+FORCE_PRED_ARGMAX=999
 NB_EPOCHS=50
 DEV_NB_EPOCHS=2
 PATIENCE=4
@@ -62,6 +63,7 @@ class TrainManager(object):
         patience=self.config.get('patience',PATIENCE)
         mask_value=self.config.get('mask_value')
         weights=self.config.get('weights')
+        pred_argmax=(self.config.get('model',{}).get('out_ch',FORCE_PRED_ARGMAX)>1)
         # run
         trainer=train.Trainer( model=model, name=name )
         trainer.set_callbacks(
@@ -119,7 +121,8 @@ class TrainManager(object):
                     optimizer=optimizer(trainer.model.parameters(),lr=lr))
                 trainer.fit(
                         accuracy_method=metrics.batch_accuracy(
-                            pred_argmax=True,
+                            pred_argmax=pred_argmax,
+                            round_prediction=(not pred_argmax),
                             mask_value=mask_value),
                         nb_epochs=nb_epochs,
                         train_loader=train_loader,
