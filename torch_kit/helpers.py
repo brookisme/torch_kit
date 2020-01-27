@@ -123,6 +123,8 @@ def get_model(
         load_weights(model,init_weights,device=device,map_location=map_location)
     if device:
         model=model.to(device)
+    elif torch.cuda.is_available():
+        model=model.cuda()
     if weight_initializer:
         print("weight_initializer: ",weight_initializer)
         model.apply(weight_initializer)
