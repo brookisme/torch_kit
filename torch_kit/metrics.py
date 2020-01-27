@@ -73,7 +73,7 @@ def batch_accuracy(
     return _calc
     
      
-def confusion_matrix(target,prediction,value,ignore_value=None,axis=None):
+def confusion_matrix(target,prediction,value=1,ignore_value=None,axis=None):
     true=(target==prediction)
     false=(~true)
     pos=(target==value)
@@ -83,7 +83,7 @@ def confusion_matrix(target,prediction,value,ignore_value=None,axis=None):
     fp=(false*pos*keep).sum()
     fn=(false*neg*keep).sum()
     tn=(true*neg).sum()
-    return H.get_items(tp, fp, fn, tn)
+    return h.get_items(tp, fp, fn, tn)
 
 
 def precision(tp,fp,fn):
