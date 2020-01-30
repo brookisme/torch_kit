@@ -121,7 +121,6 @@ class TrainManager(object):
                 trainer.compile(
                     criterion=criterion,
                     optimizer=optimizer(trainer.model.parameters(),lr=lr))
-                print('???',pred_argmax,(not pred_argmax),mask_value)
                 trainer.fit(
                         accuracy_activation=accuracy_activation,
                         accuracy_method=metrics.batch_accuracy(
