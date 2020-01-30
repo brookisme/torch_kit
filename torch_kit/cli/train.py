@@ -52,6 +52,7 @@ class TrainManager(object):
         # parse config
         train_loader,valid_loader=self._get('loaders',dev=dev)
         model=self._get('model')
+        accuracy_activation=self.config.get('criterion',{}).get('accuracy_activation')
         criterion=self._get('criterion')
         optimizer=self._get('optimizer')
         lrs=self.config.get('lrs',DEFAULT_LRS)
@@ -64,7 +65,7 @@ class TrainManager(object):
         patience=self.config.get('patience',PATIENCE)
         mask_value=self.config.get('mask_value')
         weights=self.config.get('weights')
-        pred_argmax=(self.config.get('model',{}).get('out_ch',FORCE_PRED_ARGMAX)>1)
+        pred_argmax=(self._model_config().get('out_ch',FORCE_PRED_ARGMAX)>1)
         # run
         trainer=train.Trainer( model=model, name=name )
         trainer.set_callbacks(
@@ -82,7 +83,7 @@ class TrainManager(object):
             if self.config.get('freeze'):
                 model=self._get('freeze',model=model)
         if print_summary:
-            mcfig=self.config['model']
+            mcfig=self._model_config()
             size=mcfig.get('size',SIZE)
             in_ch=mcfig['in_ch']
             summary(model.to(h.get_device()),(in_ch,size,size))
@@ -120,7 +121,9 @@ class TrainManager(object):
                 trainer.compile(
                     criterion=criterion,
                     optimizer=optimizer(trainer.model.parameters(),lr=lr))
+                print('???',pred_argmax,(not pred_argmax),mask_value)
                 trainer.fit(
+                        accuracy_activation=accuracy_activation,
                         accuracy_method=metrics.batch_accuracy(
                             pred_argmax=pred_argmax,
                             round_prediction=(not pred_argmax),
@@ -170,9 +173,10 @@ class TrainManager(object):
     def _get(self,method_name,config_name=None,**kwargs):
         if not config_name:
             config_name=method_name
-        cfig=self.config.get(config_name,{})
-        if (not cfig) and (config_name=='model'):
-            cfig=self.models_config.get(self.model_name,{})
+        if config_name=='model':
+            cfig=self._model_config()
+        else:
+            cfig=self.config.get(config_name,{})
         if not isinstance(cfig,dict):
             value=cfig
             cfig={}
@@ -180,5 +184,8 @@ class TrainManager(object):
         cfig.update(kwargs)
         return getattr(self.module,method_name)(**cfig)
 
+
+    def _model_config(self):
+        return self.config.get('model',self.models_config.get(self.model_name,{}))
 
 
