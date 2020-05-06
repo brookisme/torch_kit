@@ -46,12 +46,14 @@ def accuracy(
             test=(pred==targ)
         else:    
             test=1-torch.pow((pred-targ),2)
-    if mask_value is not None:
-        msk=(targ!=mask_value)
-        test=test[msk]
     if torch.is_tensor(test):
         test=test.float()
-    return test.mean()
+    if mask_value is None:
+        return test.mean()
+    else:
+        msk=(targ!=mask_value)
+        test=test[msk]
+        return test.sum()/msk.sum()
 
 
 def batch_accuracy(

@@ -14,21 +14,23 @@ class MaskedLoss(nn.Module):
             * loss_type<str['nll']>: nll or ce
             * device<str|None>: device-name. if exists, send weights to specified device
     """
-    def __init__(self,mask_value=None,loss_type='nll',device=None):
+    def __init__(self,mask_value=None,loss_type='nll',weight=None,device=None):
         super(MaskedLoss, self).__init__()
         if loss_type=='nll':
-            self.loss_layer=nn.NLLLoss(reduction='none')
+            self.loss_layer=nn.NLLLoss(reduction='none',weight=weight)
         else:
-            self.loss_layer=nn.CrossEntropyLoss(reduction='none')
+            self.loss_layer=nn.CrossEntropyLoss(reduction='none',weight=weight)
         self.mask_value=mask_value
 
 
     def forward(self, inpt, targ):
-        loss=self.loss_layer(inpt,targ)
         if self.mask_value is not None:
-            mask=(targ!=self.mask_value)
-            loss=loss[mask]
-        return loss.mean()
+            inpt=inpt[:,:self.mask_value]
+            keep=(targ!=self.mask_value)
+            targ[~keep]=0
+        loss=self.loss_layer(inpt,targ)
+        return (loss[keep]).sum()/keep.sum()
+
         
 
 class WeightedCategoricalCrossentropy(nn.Module):
