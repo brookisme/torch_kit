@@ -9,12 +9,15 @@ class MaskedLoss(nn.Module):
 
         negative-log-likelyhood or cross-entropy loss with mask
 
+        note: using ignore-index
+
         Args:
             * mask_value<int|array|None>: keep values where target!=mask
             * loss_type<str['nll']>: nll or ce
+            * weight<list[float]>: category weights for non masked indices 
             * device<str|None>: device-name. if exists, send weights to specified device
     """
-    def __init__(self,mask_value=None,loss_type='nll',weight=None,device=None):
+    def __init__(self,mask_value=0,loss_type='nll',weight=None,device=None):
         super(MaskedLoss, self).__init__()
         if loss_type=='nll':
             self.loss_layer=nn.NLLLoss(reduction='none',weight=weight)
@@ -25,11 +28,11 @@ class MaskedLoss(nn.Module):
 
     def forward(self, inpt, targ):
         if self.mask_value is not None:
-            inpt=inpt[:,:self.mask_value]
             keep=(targ!=self.mask_value)
             targ[~keep]=0
         loss=self.loss_layer(inpt,targ)
         return (loss[keep]).sum()/keep.sum()
+
 
         
 
