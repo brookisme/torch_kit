@@ -37,7 +37,7 @@ class TrainManager(object):
         if len(config)==1:
             self.model_name=next(iter(config.keys()))
             self.config=next(iter(config.values()))
-            self.name=f'{module_name}.{self.model_name}'
+            self.name=self.config.get('name',f'{module_name}.{self.model_name}')
             self.models_config=models_config
         else:
             raise ValueError(CONFIG_ERROR)
